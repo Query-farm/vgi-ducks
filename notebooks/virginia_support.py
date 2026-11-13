@@ -146,3 +146,71 @@ def save_chart(fig, name, notebook_dir):
     output.mkdir(parents=True, exist_ok=True)
     fig.savefig(output / name, dpi=150, bbox_inches="tight", facecolor="white")
     plt.show()
+
+
+def seasonal_range_chart(rows, land, territory, common_name, color):
+    """Compare four seasons using the same extent and the SQL-clipped geometries."""
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+    import numpy as np
+    import pandas as pd
+
+    seasons = [
+        ("nonbreeding", "Nonbreeding"),
+        ("prebreeding_migration", "Spring migration"),
+        ("breeding", "Breeding"),
+        ("postbreeding_migration", "Fall migration"),
+    ]
+    selected = rows.loc[rows.common_name == common_name].set_index("season")
+    assert set(selected.index) == {season for season, _ in seasons}
+    fig, axes = plt.subplots(2, 2, figsize=(14, 9), layout="constrained", sharex=True, sharey=True)
+    for ax, (season, label) in zip(axes.flat, seasons):
+        row = selected.loc[season]
+        ax.set_facecolor("#f5f7fa")
+        draw_geometry(ax, territory, "white", "none")
+        draw_geometry(ax, row.context_geometry_json, color, "none", alpha=0.18)
+        draw_geometry(ax, row.virginia_geometry_json, color, "none", alpha=0.72)
+        draw_geometry(ax, land, "none", "#94a3b8", linewidth=0.35)
+        draw_geometry(ax, territory, "none", "#172b3a", linewidth=1.1)
+        for city, lon, lat, dx, dy in [
+            ("Roanoke", -79.9414, 37.2709, 0.08, 0.12),
+            ("Richmond", -77.4360, 37.5407, -0.70, 0.19),
+            ("Norfolk", -76.2859, 36.8508, 0.13, -0.25),
+        ]:
+            ax.plot(lon, lat, "o", color="#172b3a", markersize=2.5, zorder=5)
+            ax.text(lon + dx, lat + dy, city, fontsize=8, color="#172b3a", zorder=6,
+                    bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.8, "pad": 1})
+        start = pd.Timestamp(row.start_date).strftime("%b %d")
+        end = pd.Timestamp(row.end_date).strftime("%b %d")
+        wrap = " · wraps New Year" if row.wraps_year else ""
+        ax.set_title(f"{label}\n{start} – {end}{wrap}", loc="left", fontsize=11, weight="bold", pad=8)
+        ax.text(0.025, 0.035, f"{row.virginia_territory_percent:.1f}% of Virginia's territory",
+                transform=ax.transAxes, fontsize=10, weight="bold", color="#172b3a",
+                bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.95, "pad": 4})
+        if shape(json.loads(row.virginia_geometry_json)).is_empty:
+            ax.text(0.65, 0.63, "No modeled range overlap", transform=ax.transAxes,
+                    ha="center", fontsize=10, color="#475569")
+        ax.set_xlim(-84.1, -74.7)
+        ax.set_ylim(36.15, 39.9)
+        ax.set_aspect(1 / np.cos(np.deg2rad(38)))
+        ax.set_xticks([-83, -81, -79, -77, -75])
+        ax.set_yticks([37, 38, 39])
+        ax.tick_params(labelsize=9)
+        ax.grid(alpha=0.25, linewidth=0.4)
+    for ax in axes[1]:
+        ax.set_xlabel("Longitude")
+    for ax in axes[:, 0]:
+        ax.set_ylabel("Latitude")
+    fig.suptitle(f"{common_name}: where the seasonal ranges meet Virginia\n"
+                 "2023 model · 27 km smoothed range polygons", x=0.02, ha="left", fontsize=17, weight="bold")
+    fig.legend(handles=[
+        Patch(facecolor=color, alpha=0.18, label="Modeled range around Virginia"),
+        Patch(facecolor=color, alpha=0.72, label="Modeled range inside Virginia"),
+        Line2D([0], [0], color="#172b3a", linewidth=1.3, label="Virginia territorial boundary"),
+    ], loc="lower center", bbox_to_anchor=(0.5, -0.065), ncol=3, frameon=False, fontsize=10)
+    fig.text(0.01, -0.12,
+             "Ranges: Fink et al. (2024), eBird Status and Trends, data version 2023 · doi:10.2173/WZTW8903\n"
+             "Boundary: Overture Maps Foundation / © OpenStreetMap contributors, 2026-10-21.0. "
+             "Season dates are species-wide; shading shows range, not abundance or sightings.",
+             fontsize=9, color="#334155", linespacing=1.6)
+    return fig

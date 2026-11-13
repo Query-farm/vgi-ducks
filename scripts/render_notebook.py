@@ -122,12 +122,12 @@ def save_editions(notebook, provenance, *, executed):
     assert all(cell.execution_count is not None for cell in code), "Some cells did not execute"
     assert not any(output.output_type == "error" for output in outputs), "Notebook contains an error"
     png_count = sum("image/png" in output.get("data", {}) for output in outputs)
-    assert png_count == 5, f"Expected five embedded chart figures, got {png_count}"
+    assert png_count == 8, f"Expected eight embedded chart figures, got {png_count}"
     reader = reader_edition(notebook, provenance)
     nbformat.validate(reader)
     validate_photos(reader)
     assert sum("image/png" in data for cell in reader.cells
-               for data in cell.get("attachments", {}).values()) == 5
+               for data in cell.get("attachments", {}).values()) == 8
     assert all("setup" not in cell.metadata.get("tags", []) for cell in reader.cells)
     for document in (notebook, reader):
         serialized = nbformat.writes(document)

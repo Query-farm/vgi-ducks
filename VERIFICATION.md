@@ -173,7 +173,7 @@ and the peak calendar using the same public sample.
 
 [Reader notebook](notebooks/spatial-migration.ipynb) and
 [executable source](notebooks/virginia-ducks.source.ipynb) were regenerated using
-`make notebook`. All 26 source code cells executed through stock DuckDB 2.0.0.
+`make notebook`. All 30 source code cells executed through stock DuckDB 2.0.0.
 The duck worker was the published `v0.1.0` executable, attached through
 `github-auto://Query-farm/vgi-ducks@v0.1.0`. The second catalog was the local
 TypeScript Overture worker at commit
@@ -215,15 +215,15 @@ water polygons. Pools, drainage basins, and wastewater features are excluded.
 This proximity calculation uses recorded coordinates and does not establish
 habitat suitability or public access.
 
-Five figures were visually inspected: the state observation map, top-species
+Eight figures were visually inspected: the state observation map, top-species
 counts, monthly reporting heatmap, three-species annual model curves with
-coverage, and three local water maps. SQL performs the joins, spatial predicates,
+coverage, three four-season range figures, and three local water maps. SQL performs the joins, spatial predicates,
 aggregates, and VGI function calls. Python handles public GBIF retrieval and
 plotting. JupySQL uses one SQLAlchemy connection so temporary tables and session
 variables persist.
 
 The renderer validates both notebook files, checks that every source cell ran,
-requires five embedded PNGs, and rejects outputs containing configured credentials.
+requires eight embedded PNGs, and rejects outputs containing configured credentials.
 It generates the reader by removing setup cells and turning plotted figures into
 Markdown image attachments. Analytical SQL and result tables remain visible;
 the complete source preserves all setup code with Jupyter collapse metadata.
@@ -244,11 +244,40 @@ license. Downloaded thumbnails are unchanged, and their SHA256 hashes are record
 in `notebooks/images/species/credits.json`. The notebook identifies these as male
 species portraits, separate from the analyzed Virginia observation records.
 
-The opening now highlights the contrasting seasonal curves, the observation
+The photograph update introduced an opening that highlights the contrasting seasonal curves, the observation
 snapshot, and the Burke Lake spatial-join result. Short interpretations follow
 the model curves and the named-water table. All 26 executable cells and their
 saved outputs were compared with the previously executed notebook and preserved.
 This editorial update used `make notebook-render`; it did not fetch new bird data
 or change the recorded model execution time. The renderer checks the executable
 cell hash before reusing results, verifies all six embedded JPEGs against the
-credited assets, and retains the five chart PNGs and hidden-setup reader format.
+credited assets, and retained the five chart PNGs present at that revision and the hidden-setup reader format.
+
+### Seasonal ranges overlaid with Virginia
+
+The seasonal-range section now includes three figures, one each for Wood Duck,
+Bufflehead, and Blue-winged Teal. Each figure uses four panels with the same
+geographic extent and scale: nonbreeding, spring migration, breeding, and fall
+migration. Pale shading shows the source range in the surrounding map window;
+stronger shading shows its intersection with Virginia. The territorial boundary,
+land coastline, and labeled reference points for Roanoke, Richmond, and Norfolk
+make the geography readable. Species-wide date windows and New Year wrapping
+are preserved on the panels.
+
+The table and maps share the materialized `seasonal_range_overlays` SQL relation.
+Territorial percentages are computed before display simplification. Validation
+requires twelve unique species/season combinations, valid intersection and context
+geometries, percentages between 0 and 100, and containment of every nonempty
+intersection within Virginia with a numerical tolerance. An exact `ST_Covers`
+predicate rejected shared edges after intersection: the measured maximum outside
+area was only `1.237381e-6` square meters. The check therefore permits a `1e-9`
+degree boundary buffer and independently requires outside area below `1e-4`
+square meters. Neither tolerance changes the plotted geometry or reported areas.
+Empty intersections produce explicit "No modeled
+range overlap" panels. These are coarse modeled ranges, not observed locations
+or abundance maps.
+
+This change requires a full authenticated `make notebook` execution, rather than
+the editorial render-only path. The regenerated notebooks retain the six
+credited photographs and now embed eight PNG figures. The map plotting code is
+hidden in the reader edition; the spatial intersection query remains visible.

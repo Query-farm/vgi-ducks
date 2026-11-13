@@ -15,11 +15,13 @@ as SQL tables in DuckDB. Written in TypeScript using the Query Farm VGI starter.
 ## See the queries and charts
 
 [Open Ducks in Virginia](notebooks/spatial-migration.ipynb) for six species
-photographs and five saved charts:
+photographs and eight saved figures:
 observation locations, species counts, monthly reporting patterns, modeled weekly
-abundance, and water-feature maps for Northern Virginia, Richmond, and Hampton
-Roads. Analytical SQL and tables remain visible; setup and plotting cells are
-omitted from this GitHub reader.
+abundance, four seasonal range maps for each of three duck species, and water-feature
+maps for Northern Virginia, Richmond, and Hampton Roads. Each seasonal map overlays
+Virginia's boundary and highlights the range inside the state, with city labels
+and territorial overlap percentages. Analytical SQL and tables remain visible;
+setup and plotting cells are omitted from this GitHub reader.
 
 The story follows three contrasting annual cycles—Wood Duck, Bufflehead, and
 Blue-winged Teal—and shows how a spatial join connects records to named water
