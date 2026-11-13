@@ -1,0 +1,12 @@
+# Notebook-only dependencies; the VGI worker remains TypeScript/Bun.
+duckdb==2.0.0
+jupysql==0.11.1
+duckdb-engine>=0.17,<1
+ipykernel>=6,<8
+jupyterlab>=4,<5
+matplotlib>=3.10,<4
+pandas>=2.2,<4
+shapely>=2.1,<3
+nbclient>=0.10,<0.11
+nbconvert>=7,<8
+nbformat>=5,<6

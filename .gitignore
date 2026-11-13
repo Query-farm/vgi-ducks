@@ -9,3 +9,4 @@ duckdb_unittest_tempdir/
 
 __pycache__/
 *.pyc
+.ipynb_checkpoints/

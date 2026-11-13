@@ -164,3 +164,23 @@ ORDER BY season;
 
 See [migration-demo.sql](migration-demo.sql) for a polygon join, weekly summaries
 and the peak calendar using the same public sample.
+
+## Executed visual notebook
+
+[notebooks/spatial-migration.ipynb](notebooks/spatial-migration.ipynb) executes 15
+code cells against stock DuckDB 2.0.0 and the published `v0.1.0` worker, attached
+with `github-auto://Query-farm/vgi-ducks@v0.1.0`. It includes three embedded PNG
+figures: duck genus richness, four seasonal range maps, and weekly abundance with
+modeled-cell coverage. The map and abundance figures explicitly identify the
+non-duck public sample. No personal key or fixture endpoint is used.
+
+`make notebook` runs the pinned Python 3.12 notebook environment, executes every
+cell, validates the notebook, checks that all three figures are embedded, and
+writes a local HTML preview. The final notebook cell checks 52 unique weeks,
+coverage bounds and the expected April 19 peak against the weekly curve. Standalone
+PNGs are saved under `notebooks/images/` for README display. The figures were
+visually inspected for labels and geometry; the notebook is under 0.5 MB.
+
+Python is used for Jupyter/plotting only; all data retrieval and analysis queries
+go through SQL and the TypeScript worker. JupySQL uses the DuckDB SQLAlchemy
+connection to retain temporary tables and session variables across cells.

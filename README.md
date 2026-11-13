@@ -12,6 +12,20 @@ as SQL tables in DuckDB. Written in TypeScript using the Query Farm VGI starter.
 | `ducks.main.weekly_abundance(species_code, region_wkt, ...)` | Weekly modeled relative abundance within a polygon, with coverage counts |
 | `ducks.main.migration_calendar(species_code, region_wkt, ...)` | All weeks tied for the highest positive regional mean abundance |
 
+## See the queries and charts
+
+[Open the executed notebook](notebooks/spatial-migration.ipynb) for a duck taxonomy
+chart, seasonal range maps, spatial joins, and a weekly abundance curve with
+coverage. GitHub displays its saved tables and PNG figures directly.
+
+![Weekly abundance and modeled-cell coverage for Cornell's non-duck Yellow-bellied Sapsucker sample](notebooks/images/weekly-abundance.png)
+
+The notebook runs against the published `v0.1.0` worker and requires no personal
+key. Its migration charts use Cornell's explicitly labeled **non-duck** public
+sample in Michigan. The worker remains TypeScript; notebook SQL queries use
+JupySQL, with Python for plotting. Run `make notebook` to execute every cell and
+refresh the saved charts, or follow the notebook's instructions for JupyterLab.
+
 ## Quick start
 
 Standalone executables are available on the [GitHub releases page](https://github.com/Query-farm/vgi-ducks/releases).
