@@ -29,6 +29,15 @@ features such as Burke Lake. Credited photographs also introduce Mallard, Hooded
 Merganser, and Gadwall. The [photographs retain their own licenses](notebooks/images/species/README.md)
 and illustrate species; they are not images of the analyzed observation records.
 
+The three modeled species are a curated comparison chosen to show different
+seasonal patterns and keep the maps readable. The observation analysis includes
+29 species; three is not a worker limit or a representative sample. A worked
+example explains **mean relative abundance**: predicted detections on a standard
+one-hour, two-kilometer checklist, averaged across the selected modeled cells.
+It distinguishes this measure from encounter probability, population size, and
+observation-record counts, and explains why raw curve heights should not rank
+populations across species.
+
 ![Duck observations beside Overture water features in three Virginia regions](notebooks/images/virginia-ducks-water.png)
 
 The notebook combines the published `v0.1.0` duck worker with the local TypeScript
@@ -205,7 +214,12 @@ migration_calendar(species_code VARCHAR, region_wkt VARCHAR,
   not an exact area-clipped mean. There is no interpolation or upsampling.
 - Relative abundance is the expected number of birds on a standardized
   one-hour, two-kilometer checklist under the model's observation conditions.
-  Regional means/maxima are not total populations. **True zero stays zero;
+  These are predicted detections under standardized effort, not a census of all
+  birds present. Regional means/maxima are not total populations or encounter
+  probabilities. Compare a species across space or time; differing detectability
+  prevents interpreting raw values as population rankings across species.
+  See [Cornell's comparison guidance](https://ebird.github.io/ebird-one-day-status-workshop/ebirdst.html).
+  **True zero stays zero;
   NoData is excluded.** `modeled_cell_count / selected_cell_count` is
   `coverage_fraction`. No modeled cells yields NULL abundance; no selected
   centers yields NULL coverage. Coverage applies to cell centers within the

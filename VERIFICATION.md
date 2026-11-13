@@ -281,3 +281,35 @@ This change requires a full authenticated `make notebook` execution, rather than
 the editorial render-only path. The regenerated notebooks retain the six
 credited photographs and now embed eight PNG figures. The map plotting code is
 hidden in the reader edition; the spatial intersection query remains visible.
+
+### Explaining abundance and the three-species selection
+
+The reader now distinguishes the 29-species observation snapshot from the
+curated three-species model comparison. A selection table explains the contrasting
+annual patterns and the twelve-panel map layout; it does not claim these species
+represent all Virginia ducks or that the worker is limited to three species.
+
+The abundance explanation defines Cornell's standardized checklist conditions
+and the worker's equal-weight spatial mean separately. An explicitly illustrative
+example averages predictions of 0, 0.2, 0.4, and 0.6 to 0.3, excludes a fifth
+NoData cell, and reports 80% coverage. The actual Bufflehead peak is interpreted
+separately using the 149 selected modeled cells. The text distinguishes expected
+detections from encounter probability, population totals, and observation-record
+counts, and explains the limits of comparing raw values across species.
+
+The chart axes now state predicted detections per standard checklist, averaged
+across cells. The method section identifies the 27 km product as an aggregation
+of Cornell's 3 km predictions and explains center selection, equal weighting,
+boundary simplification, model year, and coverage. Definitions and comparison
+guidance link to Cornell's documentation.
+
+A full authenticated `make notebook` rerun executed all 30 code cells, preserving
+the eight embedded chart figures, six credited photographs, and hidden setup.
+Analytical queries were unchanged; the model chart was regenerated with the
+clearer units and caption.
+Saved analytical result tables were compared with the previous revision and
+were unchanged. A browser check loaded all fourteen embedded images, found the
+four new explanatory headings, and confirmed setup code remains hidden.
+`make check` passed again, including all SQL transports and vgi-lint at 100/100
+with zero findings at L2. A credential scan passed for repository files, the
+HTML preview, and execution logs.
