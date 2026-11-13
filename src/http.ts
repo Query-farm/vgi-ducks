@@ -1,4 +1,6 @@
 /** Bounded, timeout-protected HTTP reads for eBird's public services. */
+import { VERSION } from "./meta.ts";
+
 export class UpstreamError extends Error {}
 
 export type Fetcher = (url: URL | string, options: RequestInit) => Promise<Response>;
@@ -76,7 +78,7 @@ export async function getBytes(url: URL | string, options: HttpOptions = {}): Pr
           redirect: options.followRedirects ? "manual" : "error",
           signal: AbortSignal.timeout(options.timeoutMs ?? 20_000),
           headers: {
-            "User-Agent": "QueryFarm-vgi-ducks/0.1.0",
+            "User-Agent": `QueryFarm-vgi-ducks/${VERSION}`,
             Accept: "application/json",
             ...(options.token && requestUrl.origin === new URL(url).origin ? { "X-eBirdApiToken": options.token } : {}),
           },
