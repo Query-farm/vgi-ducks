@@ -83,6 +83,23 @@ def main():
                 else:
                     raise AssertionError(f"Expected an error for {check['sql']}")
             if fixture_mode:
+                # Exercise the exact optional notebook query without a live credential.
+                con.execute("SET VARIABLE demo_species='mallar3'")
+                con.execute("SET VARIABLE live_latitude=42.36")
+                con.execute("SET VARIABLE live_longitude=-71.06")
+                notebook_sql = (ROOT / "notebooks/nearby-ducks.sql").read_text()
+                nearby = con.execute(notebook_sql).fetchall()
+                assert len(nearby) == 2
+                assert [(row[0], row[2], row[3]) for row in nearby] == [
+                    ("Mallard", "2026-11-12 08:15", 7),
+                    ("Mallard", "2026-11-12 09:00", 0),
+                ]
+                assert nearby[0][4] == 0 and nearby[1][4] > 0
+                assert all(row[5] is not None for row in nearby)
+                con.execute("SET VARIABLE live_latitude=-90")
+                assert con.execute(notebook_sql).fetchall() == []
+                report["notebook_live_query_fixture_passed"] = True
+                print("PASS optional notebook SQL: species-specific hotspot join and empty result", flush=True)
                 # A DuckDB secret must override the valid fixture environment key.
                 con.execute("CREATE SECRET ducks_wrong (TYPE ebird, TOKEN 'wrong-fixture-key')")
                 try:

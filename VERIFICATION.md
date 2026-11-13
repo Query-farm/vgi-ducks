@@ -313,3 +313,53 @@ four new explanatory headings, and confirmed setup code remains hidden.
 `make check` passed again, including all SQL transports and vgi-lint at 100/100
 with zero findings at L2. A credential scan passed for repository files, the
 HTML preview, and execution logs.
+
+### VGI showcase: changing polygons and joining three sources
+
+The reader exposes the executed `ATTACH` for the published TypeScript worker and
+a settings cell for species, season, focus window, comparison meridian, and live
+search coordinates. Installation and credentials remain hidden. A source table
+distinguishes the two VGI workers from the public observation snapshot.
+
+The regional example queries Bufflehead in two polygons formed by intersecting
+Virginia with the half-planes west and east of 77.3°W. These are study regions,
+not official ecological regions. The west selects 114 grid centers and the east
+35; both have all 52 weeks with 100% modeled-cell coverage. The figure pairs the
+actual polygons with both curves on one vertical scale. The separately executed
+`migration_calendar` result for statewide Bufflehead matches every tied positive
+maximum in the full weekly series: December 27, mean 1.5731030255540481.
+
+The final analysis uses the Bufflehead nonbreeding range, whose model dates run
+December 27–February 15 across New Year. SQL intersects named Overture water with
+that range, territorial Virginia, and the Northern Virginia window. It selects
+same-species historical reports using that inclusive month/day interval in
+2024–2025, then joins reports within 500 m of the clipped water geometry. The
+saved result contains 124 named water features, three seasonal reports in the
+window, and two distinct reports matched to two water features: Belmont Bay and
+Pohick Bay, with one nearby matching report each. Neither proximity nor range
+overlap establishes habitat use, model validation, or public access.
+
+Validation independently checks the seasonal date predicate, unique feature and
+record IDs, containment of clipped water in all three geometries, every distance
+match, distinct-report counts, regional coverage, and the peak function against
+the weekly series. The map, displayed table, and generated finding use the same
+materialized relations. The reader now embeds ten figures and six photographs;
+technical geometry details are collected in an appendix.
+
+The optional `notebooks/nearby-ducks.sql` joins species-specific recent sightings
+to nearby hotspots by location ID. No `EBIRD_API_KEY` was configured, so the real
+notebook records **not run**, not zero sightings. `make verify-stock` executes
+that exact SQL against the offline fixture with stock DuckDB 2.0.0 and signed VGI
+`e75482339d`: it checks both returned latest-location reports, including a reported
+count of zero, and a successful empty response. It also passes the existing 26
+result checks and 22 expected-error checks. Fixture results are never inserted
+into the public notebook.
+
+The render-only integrity hash now covers executable cells, the plotting helper,
+and the reusable SQL file. Changes to any of them require fresh execution.
+The authenticated full run executed all 42 code cells successfully; the key-free
+render-only path also passed with that recorded execution. A browser review
+loaded all sixteen embedded images, checked the visible attachment/settings and
+optional live status, followed the appendix link, and confirmed installation and
+plotting code remain hidden. `make check` passed all unit and transport checks;
+vgi-lint remained 100/100, zero findings, at L2.

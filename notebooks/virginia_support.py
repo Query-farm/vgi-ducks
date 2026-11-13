@@ -128,9 +128,15 @@ def configure_plots():
     })
 
 
-def draw_geometry(ax, geometry, facecolor, edgecolor, linewidth=0.5, alpha=1.0):
+def as_geometry(geometry):
+    """Accept GeoJSON decoded by SQLAlchemy, raw GeoJSON text, or Shapely geometry."""
     if isinstance(geometry, str):
-        geometry = shape(json.loads(geometry))
+        geometry = json.loads(geometry)
+    return shape(geometry) if isinstance(geometry, dict) else geometry
+
+
+def draw_geometry(ax, geometry, facecolor, edgecolor, linewidth=0.5, alpha=1.0):
+    geometry = as_geometry(geometry)
     if geometry.is_empty:
         return
     if geometry.geom_type == "Polygon":
@@ -212,5 +218,134 @@ def seasonal_range_chart(rows, land, territory, common_name, color):
              "Ranges: Fink et al. (2024), eBird Status and Trends, data version 2023 · doi:10.2173/WZTW8903\n"
              "Boundary: Overture Maps Foundation / © OpenStreetMap contributors, 2026-10-21.0. "
              "Season dates are species-wide; shading shows range, not abundance or sightings.",
+             fontsize=9, color="#334155", linespacing=1.6)
+    return fig
+
+
+def regional_comparison_chart(weekly, regions, territory, common_name):
+    """Pair the exact study polygons with two same-species curves on one scale."""
+    import matplotlib.dates as mdates
+    import numpy as np
+    import pandas as pd
+
+    colors = {"Central & western Virginia": "#087f8c", "Eastern Virginia": "#6554a4"}
+    fig, (map_ax, curve_ax) = plt.subplots(
+        1, 2, figsize=(14, 5.5), layout="constrained", gridspec_kw={"width_ratios": [1, 1.3]}
+    )
+    for row in regions.itertuples():
+        draw_geometry(map_ax, row.geometry_json, colors[row.side], "white", alpha=0.55)
+    draw_geometry(map_ax, territory, "none", "#334155", linewidth=0.8)
+    map_ax.set_xlim(-84.1, -74.7)
+    map_ax.set_ylim(36.15, 39.9)
+    map_ax.set_aspect(1 / np.cos(np.deg2rad(38)))
+    map_ax.set_xlabel("Longitude")
+    map_ax.set_ylabel("Latitude")
+    map_ax.set_title("Two explicitly defined study regions", loc="left", fontsize=12)
+    map_ax.grid(alpha=0.2)
+    for region, color in colors.items():
+        rows = weekly.loc[weekly.region == region].sort_values("week_date")
+        coverage = rows.coverage_fraction.min()
+        label = f"{region}\n{int(rows.selected_cell_count.iloc[0])} cells · min. coverage {coverage:.0%}"
+        curve_ax.plot(pd.to_datetime(rows.week_date), rows.mean_relative_abundance,
+                      color=color, linewidth=2.5, label=label)
+    curve_ax.set_ylim(bottom=0)
+    curve_ax.set_xlim(pd.Timestamp("2023-01-01"), pd.Timestamp("2023-12-31"))
+    curve_ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+    curve_ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+    curve_ax.set_ylabel("Predicted detections per standard checklist\n(mean across each region's modeled cells)")
+    curve_ax.set_title("Same species, same units, same vertical scale", loc="left", fontsize=12)
+    curve_ax.grid(axis="y", alpha=0.6)
+    curve_ax.legend(frameon=False, fontsize=9, loc="upper left")
+    fig.suptitle(f"Change the polygon: {common_name} within Virginia", x=0.02,
+                 ha="left", fontsize=17, weight="bold")
+    fig.text(0.01, -0.07,
+             "2023 eBird Status and Trends · 27 km cells · Fink et al. (2024), doi:10.2173/WZTW8903\n"
+             "Boundary: Overture Maps Foundation / © OpenStreetMap contributors. Study regions are a longitude split, not official ecological regions.",
+             fontsize=9, color="#334155", linespacing=1.6)
+    return fig
+
+
+def seasonal_water_chart(water, reports, selected_range, focus, land, territory):
+    """Display the SQL intersection and distinct report matches, with a numbered key."""
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+    import numpy as np
+    import pandas as pd
+    from shapely.geometry import box
+    import textwrap
+
+    west, south, east, north = (float(focus[name]) for name in ("west", "south", "east", "north"))
+    bounds = box(west, south, east, north)
+    territorial_shape = as_geometry(territory)
+    extent = as_geometry(selected_range.geometry_json).intersection(bounds).intersection(territorial_shape)
+    fig, (ax, key_ax) = plt.subplots(1, 2, figsize=(13, 8), layout="constrained",
+                                   gridspec_kw={"width_ratios": [1.5, 1]})
+    ax.set_facecolor("#f5f8fa")
+    draw_geometry(ax, land, "#eef0e9", "#aab6ae", linewidth=0.4)
+    draw_geometry(ax, extent, "#b5d7c3", "none", alpha=0.55)
+    # Draw the highlighted features last so broad water polygons cannot cover them.
+    for row in water.sort_values(["nearby_reports", "id"]).itertuples():
+        matched = row.nearby_reports > 0
+        draw_geometry(ax, row.geometry_json, "#6554a4" if matched else "#b7d7e8",
+                      "#51428c" if matched else "#8db7cd", linewidth=0.55, alpha=0.85)
+    draw_geometry(ax, territory, "none", "#53665d", linewidth=0.6)
+    for matched, color in [(False, "#64748b"), (True, "#bc7d16")]:
+        rows = reports.loc[reports.matched == matched]
+        ax.scatter(rows.longitude, rows.latitude, s=48 if matched else 25, color=color,
+                   edgecolors="white", linewidths=0.7, zorder=6)
+    selected = water.loc[water.nearby_reports > 0].head(8)
+    for index, row in enumerate(selected.itertuples(), 1):
+        point = as_geometry(row.geometry_json).representative_point()
+        ax.annotate(str(index), (point.x, point.y), xytext=(9, 11), textcoords="offset points",
+                    fontsize=9, weight="bold", color="#51428c", zorder=8,
+                    bbox={"boxstyle": "circle,pad=0.25", "facecolor": "white", "edgecolor": "#6554a4"},
+                    arrowprops={"arrowstyle": "-", "color": "#6554a4", "lw": 0.7})
+    ax.set_xlim(west, east)
+    ax.set_ylim(south, north)
+    ax.set_aspect(1 / np.cos(np.deg2rad((south + north) / 2)))
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    ax.xaxis.set_major_locator(plt.MaxNLocator(4))
+    ax.yaxis.set_major_locator(plt.MaxNLocator(5))
+    ax.grid(alpha=0.2, linewidth=0.5)
+    ax.set_title(str(focus["name"]), loc="left", fontsize=13, weight="bold")
+    key_ax.axis("off")
+    key_ax.text(0, 0.98, "Named water + historical reports", fontsize=13, weight="bold", va="top")
+    key_ax.text(0, 0.89, f"{len(water)} named waters intersect the range", fontsize=12, weight="bold", color="#334155")
+    key_ax.text(0, 0.82, f"{len(reports)} seasonal species reports in the window", fontsize=11, color="#334155")
+    key_ax.text(0, 0.75, f"{int(reports.matched.sum())} unique reports within 500 m of those waters", fontsize=11, color="#334155")
+    key_ax.text(0, 0.64, "Named feature                                      Nearby reports\n2024–2025 · selected species and seasonal dates",
+                fontsize=10, color="#475569", va="top", linespacing=1.5)
+    y = 0.53
+    wrapped_names = [textwrap.fill(str(name), width=29) for name in selected.name]
+    line_units = sum(name.count("\n") + 1.35 for name in wrapped_names)
+    line_height = min(0.065, 0.42 / max(line_units, 1))
+    if selected.empty:
+        key_ax.text(0, y, "No named water has matching reports\nin this filtered snapshot.", fontsize=11)
+    for index, row in enumerate(selected.itertuples(), 1):
+        name = textwrap.fill(row.name, width=29)
+        key_ax.text(0, y, f"{index}. {name}", fontsize=11, va="top", color="#51428c")
+        key_ax.text(0.98, y, str(int(row.nearby_reports)), fontsize=12, weight="bold", ha="right", va="top")
+        y -= line_height * (name.count("\n") + 1.35)
+    key_ax.text(0, 0.09,
+                "One report may match multiple waters;\ndo not add the feature counts together.",
+                fontsize=10, color="#475569", va="top", linespacing=1.5)
+    start = pd.Timestamp(selected_range.start_date).strftime("%b %d")
+    end = pd.Timestamp(selected_range.end_date).strftime("%b %d")
+    season = str(selected_range.season).replace("_", " ")
+    wrap = " · wraps New Year" if selected_range.wraps_year else ""
+    fig.suptitle(f"{selected_range.common_name}: connect season, water, and reports\n"
+                 f"{season.title()} · {start} – {end}{wrap}",
+                 x=0.02, ha="left", fontsize=17, weight="bold")
+    fig.legend(handles=[
+        Patch(facecolor="#b5d7c3", alpha=0.55, label="Modeled seasonal range"),
+        Patch(facecolor="#b7d7e8", label="Named water in range"),
+        Patch(facecolor="#6554a4", label="Water with nearby reports"),
+        Line2D([0], [0], marker="o", linestyle="none", color="#bc7d16", label="Matching species report"),
+        Line2D([0], [0], marker="o", linestyle="none", color="#64748b", label="Other seasonal report"),
+    ], loc="lower center", bbox_to_anchor=(0.5, -0.075), ncol=3, frameon=False, fontsize=9)
+    fig.text(0.01, -0.14,
+             "Range: eBird Status and Trends 2023, 27 km · Reports: iNaturalist / GBIF 2024–2025 · Water: Overture / © OpenStreetMap contributors, 2026-10-21.0\n"
+             "Reports are matched within 500 m of the clipped water geometry. Coarse ranges and proximity do not establish habitat use or public access.",
              fontsize=9, color="#334155", linespacing=1.6)
     return fig

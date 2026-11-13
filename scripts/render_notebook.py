@@ -23,7 +23,11 @@ SOURCE = ROOT / "notebooks/virginia-ducks.source.ipynb"
 
 def code_digest(notebook):
     sources = [(cell.id, cell.source) for cell in notebook.cells if cell.cell_type == "code"]
-    return hashlib.sha256(json.dumps(sources).encode()).hexdigest()
+    dependencies = {
+        name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+        for name in ("notebooks/virginia_support.py", "notebooks/nearby-ducks.sql")
+    }
+    return hashlib.sha256(json.dumps({"cells": sources, "dependencies": dependencies}, sort_keys=True).encode()).hexdigest()
 
 
 def validate_photos(notebook):
@@ -46,6 +50,11 @@ def reader_edition(notebook, provenance):
         tags = cell.metadata.get("tags", [])
         if "setup" in tags or cell.id == "source-instructions":
             continue
+        if "reader-markdown" in tags:
+            parts = [output.data["text/markdown"] for output in cell.outputs
+                     if "text/markdown" in output.get("data", {})]
+            assert parts, f"Expected rendered explanation in {cell.id}"
+            cell = nbformat.v4.new_markdown_cell("\n\n".join(parts), id=cell.id)
         if "hide-input" in tags:
             figures = [output.data["image/png"] for output in cell.outputs
                        if "image/png" in output.get("data", {})]
@@ -73,8 +82,10 @@ def reader_edition(notebook, provenance):
         f"{provenance['duck_species']} species. Overture release "
         f"`{provenance['overture_release']}`, worker commit "
         f"`{provenance['overture_worker_commit']}`. "
-        "eBird model: 2023, 27 km, 52 weeks each for three species. "
+        "eBird model: 2023, 27 km, 52 weeks each for three statewide species; "
+        "the selected species is also queried for two Virginia subregions. "
         "Duck worker: `v0.1.0`; DuckDB: `2.0.0`.\n\n"
+        f"Optional live eBird example: **{provenance['live_ebird_status']}**.\n\n"
         f"Observation-cache SHA256: `{provenance['sha256']}`.",
         id="execution-snapshot",
     ))
@@ -122,12 +133,12 @@ def save_editions(notebook, provenance, *, executed):
     assert all(cell.execution_count is not None for cell in code), "Some cells did not execute"
     assert not any(output.output_type == "error" for output in outputs), "Notebook contains an error"
     png_count = sum("image/png" in output.get("data", {}) for output in outputs)
-    assert png_count == 8, f"Expected eight embedded chart figures, got {png_count}"
+    assert png_count == 10, f"Expected ten embedded chart figures, got {png_count}"
     reader = reader_edition(notebook, provenance)
     nbformat.validate(reader)
     validate_photos(reader)
     assert sum("image/png" in data for cell in reader.cells
-               for data in cell.get("attachments", {}).values()) == 8
+               for data in cell.get("attachments", {}).values()) == 10
     assert all("setup" not in cell.metadata.get("tags", []) for cell in reader.cells)
     for document in (notebook, reader):
         serialized = nbformat.writes(document)

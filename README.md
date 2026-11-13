@@ -15,13 +15,15 @@ as SQL tables in DuckDB. Written in TypeScript using the Query Farm VGI starter.
 ## See the queries and charts
 
 [Open Ducks in Virginia](notebooks/spatial-migration.ipynb) for six species
-photographs and eight saved figures:
+photographs and ten saved figures:
 observation locations, species counts, monthly reporting patterns, modeled weekly
 abundance, four seasonal range maps for each of three duck species, and water-feature
-maps for Northern Virginia, Richmond, and Hampton Roads. Each seasonal map overlays
+maps for Northern Virginia, Richmond, and Hampton Roads, a comparison of two
+Virginia study regions, and a final range–water–report join. Each seasonal map overlays
 Virginia's boundary and highlights the range inside the state, with city labels
 and territorial overlap percentages. Analytical SQL and tables remain visible;
-setup and plotting cells are omitted from this GitHub reader.
+setup and plotting cells are omitted from this GitHub reader. The short VGI
+attachment and the species, season, and region settings remain visible.
 
 The story follows three contrasting annual cycles—Wood Duck, Bufflehead, and
 Blue-winged Teal—and shows how a spatial join connects records to named water
@@ -38,7 +40,22 @@ It distinguishes this measure from encounter probability, population size, and
 observation-record counts, and explains why raw curve heights should not rank
 populations across species.
 
-![Duck observations beside Overture water features in three Virginia regions](notebooks/images/virginia-ducks-water.png)
+![Bufflehead modeled abundance compared across two mapped Virginia study regions](notebooks/images/virginia-ducks-regional.png)
+
+The final worked example joins **Bufflehead's nonbreeding range → named Overture
+water → nearby Bufflehead reports during the same seasonal month/day interval**.
+In Northern Virginia, 124 named water features intersect the selected range;
+Belmont Bay and Pohick Bay each have one matching historical report within 500 m
+of the clipped water. The result contains two distinct matching records, with
+duplicate matches handled explicitly. These are historical reporting results,
+not a habitat or access recommendation.
+
+The notebook also executes `migration_calendar` and verifies its peak weeks
+against the full weekly series. An optional final section joins `recent_sightings`
+to `nearby_hotspots` using [this reusable SQL](notebooks/nearby-ducks.sql). The saved
+run marks it **not run: no `EBIRD_API_KEY` configured**; its SQL is separately
+verified with offline fixtures through stock DuckDB. Set that separate key before
+launch to obtain live results. The Status and Trends key does not enable it.
 
 The notebook combines the published `v0.1.0` duck worker with the local TypeScript
 [Overture worker](https://github.com/Query-farm/vgi-overture-maps-typescript), pinned
@@ -61,7 +78,8 @@ credentials and source eBird rasters are not saved in the repository.
 
 For prose or photo edits, `make notebook-render` rebuilds both editions from the
 saved results without downloading data or requiring a key. It rejects changes to
-executable cells, which require a fresh `make notebook` run. All six photographs
+executable cells or the plotting/SQL helper files, which require a fresh
+`make notebook` run. All six photographs
 are embedded so GitHub and downloaded notebooks can display them reliably.
 
 ## Quick start
