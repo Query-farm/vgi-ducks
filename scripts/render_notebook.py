@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Execute the Virginia analysis and build a GitHub reader with setup omitted."""
 from copy import deepcopy
+import argparse
+import base64
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -16,6 +19,24 @@ from nbconvert import HTMLExporter
 ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK = ROOT / "notebooks/spatial-migration.ipynb"
 SOURCE = ROOT / "notebooks/virginia-ducks.source.ipynb"
+
+
+def code_digest(notebook):
+    sources = [(cell.id, cell.source) for cell in notebook.cells if cell.cell_type == "code"]
+    return hashlib.sha256(json.dumps(sources).encode()).hexdigest()
+
+
+def validate_photos(notebook):
+    directory = ROOT / "notebooks/images/species"
+    credits = json.loads((directory / "credits.json").read_text())
+    photos = {name: data["image/jpeg"] for cell in notebook.cells
+              for name, data in cell.get("attachments", {}).items() if "image/jpeg" in data}
+    assert len(photos) == len(credits) == 6, "Expected six credited species portraits"
+    for credit in credits:
+        raw = (directory / credit["file"]).read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == credit["sha256"], "Photo checksum mismatch"
+        assert base64.b64decode(photos[credit["file"]], validate=True) == raw
+        assert all(credit[field] for field in ("author", "license", "license_url", "source_url"))
 
 
 def reader_edition(notebook, provenance):
@@ -61,13 +82,10 @@ def reader_edition(notebook, provenance):
     return reader
 
 
-def main():
-    if not os.environ.get("EBIRDST_KEY", "").strip():
-        raise SystemExit("Set EBIRDST_KEY in the environment to regenerate the Virginia models.")
+def execute(notebook):
     # Always use real sources, even after fixture test runs.
     for key in ("DUCKS_EBIRD_BASE_URL", "DUCKS_STATUS_BASE_URL", "DUCKS_STATUS_SAMPLE_BASE_URL"):
         os.environ.pop(key, None)
-    notebook = nbformat.read(SOURCE, as_version=4)
     with tempfile.TemporaryDirectory(prefix="vgi-ducks-notebook-") as temporary:
         kernels = Path(temporary) / "kernels"
         kernel = kernels / "vgi-ducks-demo"
@@ -95,17 +113,21 @@ def main():
             if manager.has_kernel:
                 manager.shutdown_kernel(now=True)
 
+
+def save_editions(notebook, provenance, *, executed):
     nbformat.validate(notebook)
+    validate_photos(notebook)
     code = [cell for cell in notebook.cells if cell.cell_type == "code"]
     outputs = [output for cell in code for output in cell.outputs]
     assert all(cell.execution_count is not None for cell in code), "Some cells did not execute"
     assert not any(output.output_type == "error" for output in outputs), "Notebook contains an error"
     png_count = sum("image/png" in output.get("data", {}) for output in outputs)
     assert png_count == 5, f"Expected five embedded chart figures, got {png_count}"
-    provenance = json.loads((ROOT / ".cache/virginia-ducks/verification.json").read_text())
     reader = reader_edition(notebook, provenance)
     nbformat.validate(reader)
-    assert sum(bool(cell.get("attachments")) for cell in reader.cells) == 5
+    validate_photos(reader)
+    assert sum("image/png" in data for cell in reader.cells
+               for data in cell.get("attachments", {}).values()) == 5
     assert all("setup" not in cell.metadata.get("tags", []) for cell in reader.cells)
     for document in (notebook, reader):
         serialized = nbformat.writes(document)
@@ -120,9 +142,33 @@ def main():
     preview_dir = ROOT / "dist/notebooks"
     preview_dir.mkdir(parents=True, exist_ok=True)
     (preview_dir / "spatial-migration.html").write_text(preview)
-    print(f"Executed {len(code)} code cells; saved {png_count} embedded PNG figures.")
+    if executed:
+        print(f"Executed {len(code)} code cells; saved {png_count} embedded PNG figures and six photographs.")
+    else:
+        print(f"Reused saved results for {len(code)} unchanged code cells; rebuilt both editions with six photographs.")
     print(f"Notebook: {NOTEBOOK}")
     print(f"HTML preview: {preview_dir / 'spatial-migration.html'}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--render-only", action="store_true",
+                        help="Reuse verified outputs for prose/photo edits; does not execute SQL or fetch data.")
+    args = parser.parse_args()
+    notebook = nbformat.read(SOURCE, as_version=4)
+    digest = code_digest(notebook)
+    if args.render_only:
+        previous = notebook.metadata.get("vgi_execution", {})
+        if digest != previous.get("code_sha256"):
+            raise SystemExit("Executable cells changed or lack a verification record; run make notebook first.")
+        provenance = previous["provenance"]
+    else:
+        if not os.environ.get("EBIRDST_KEY", "").strip():
+            raise SystemExit("Set EBIRDST_KEY in the environment to regenerate the Virginia models.")
+        execute(notebook)
+        provenance = json.loads((ROOT / ".cache/virginia-ducks/verification.json").read_text())
+        notebook.metadata["vgi_execution"] = {"code_sha256": digest, "provenance": provenance}
+    save_editions(notebook, provenance, executed=not args.render_only)
 
 
 if __name__ == "__main__":

@@ -14,11 +14,18 @@ as SQL tables in DuckDB. Written in TypeScript using the Query Farm VGI starter.
 
 ## See the queries and charts
 
-[Open Ducks in Virginia](notebooks/spatial-migration.ipynb) for five saved charts:
+[Open Ducks in Virginia](notebooks/spatial-migration.ipynb) for six species
+photographs and five saved charts:
 observation locations, species counts, monthly reporting patterns, modeled weekly
 abundance, and water-feature maps for Northern Virginia, Richmond, and Hampton
 Roads. Analytical SQL and tables remain visible; setup and plotting cells are
 omitted from this GitHub reader.
+
+The story follows three contrasting annual cycles—Wood Duck, Bufflehead, and
+Blue-winged Teal—and shows how a spatial join connects records to named water
+features such as Burke Lake. Credited photographs also introduce Mallard, Hooded
+Merganser, and Gadwall. The [photographs retain their own licenses](notebooks/images/species/README.md)
+and illustrate species; they are not images of the analyzed observation records.
 
 ![Duck observations beside Overture water features in three Virginia regions](notebooks/images/virginia-ducks-water.png)
 
@@ -40,6 +47,11 @@ collapsed setup cells and JupyterLab instructions. Python handles Jupyter,
 public GBIF retrieval, and plotting; analysis runs in SQL and both VGI workers
 remain TypeScript. Raw observations are cached locally in ignored `.cache/`;
 credentials and source eBird rasters are not saved in the repository.
+
+For prose or photo edits, `make notebook-render` rebuilds both editions from the
+saved results without downloading data or requiring a key. It rejects changes to
+executable cells, which require a fresh `make notebook` run. All six photographs
+are embedded so GitHub and downloaded notebooks can display them reliably.
 
 ## Quick start
 

@@ -234,3 +234,21 @@ Virginia containment, all three water windows, 52 unique weeks per model,
 nonnegative abundance, coverage bounds, and valid seasonal geometries.
 `make check` was rerun after the notebook work: all unit and SQL transport checks
 passed, and vgi-lint remained 100/100 with zero findings at L2.
+
+### Species photographs and reader narrative
+
+Six authentic Wikimedia Commons photographs were added for Wood Duck, Bufflehead,
+Blue-winged Teal, Mallard, Hooded Merganser, and Gadwall. Each image was visually
+inspected and has a photographer credit, original source page, and Creative Commons
+license. Downloaded thumbnails are unchanged, and their SHA256 hashes are recorded
+in `notebooks/images/species/credits.json`. The notebook identifies these as male
+species portraits, separate from the analyzed Virginia observation records.
+
+The opening now highlights the contrasting seasonal curves, the observation
+snapshot, and the Burke Lake spatial-join result. Short interpretations follow
+the model curves and the named-water table. All 26 executable cells and their
+saved outputs were compared with the previously executed notebook and preserved.
+This editorial update used `make notebook-render`; it did not fetch new bird data
+or change the recorded model execution time. The renderer checks the executable
+cell hash before reusing results, verifies all six embedded JPEGs against the
+credited assets, and retains the five chart PNGs and hidden-setup reader format.

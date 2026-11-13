@@ -67,10 +67,13 @@ template-diff: ## Show upstream template changes since this project was created
 clean: ## Remove build outputs and tool caches
 	rm -rf node_modules .tools dist
 
-.PHONY: verify-stock test-live test-migration-sample verify-taxonomy notebook
+.PHONY: verify-stock test-live test-migration-sample verify-taxonomy notebook notebook-render
 
-notebook: ## Execute the charted SQL notebook against the pinned release (network, no key)
+notebook: ## Execute the Virginia SQL notebook (network and EBIRDST_KEY required)
 	uv run --no-project --python 3.12 --with-requirements notebooks/requirements.txt python scripts/render_notebook.py
+
+notebook-render: ## Rebuild presentation from saved results after prose/photo edits (no key)
+	uv run --no-project --python 3.12 --with-requirements notebooks/requirements.txt python scripts/render_notebook.py --render-only
 
 verify-stock: build ## Offline API contract through stock DuckDB 2.0.0
 	python3 scripts/with_fixtures.py uv run --no-project --with duckdb==2.0.0 python scripts/verify_stock.py --output verification-stock.json
