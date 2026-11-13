@@ -29,11 +29,13 @@ references, not worker dependencies.
 | Haybarn Unix launch SQL | 183 assertions, 3 test files, no skips; includes starter recipes |
 | Haybarn HTTP SQL | 147 assertions, 2 test files, no skips |
 | Metadata | 100/100, zero findings, L2 behavioral; offline species example executed |
+| Optional `make lint-ai` via fixture wrapper | Passed L3 semantic, zero findings; static 100, agent 100, doc-quality 62, combined score 92/100 |
 | `make verify-stock` | 26 result checks, 22 expected-error checks, precedence checks for both secret types passed |
 | `make test-migration-sample` | 5 checks against real public GeoPackage/GeoTIFF data through stock DuckDB + Spatial |
 | `make verify-taxonomy` | All 140 rows matched the live public eBird taxonomy version 2026 |
 | Compiled artifact | Full fixture contract and all 5 public-sample checks passed from an extracted temporary directory |
 | `git diff --check` | Passed |
+| Hosted GitHub CI | Passed Linux and Windows SQL lanes, unit/type checks, vgi-lint, stock DuckDB and Docker smoke test |
 
 Stock engine reports are saved in [verification-stock.json](verification-stock.json)
 and [verification-package.json](verification-package.json). Public sample reports
@@ -112,8 +114,14 @@ live without a key. Other model releases and authenticated product codes remain
 unverified; the default model year is explicitly 2023.
 
 The metadata checker executes only the credential-free species example; its L2
-score does not establish live eBird API behavior. The optional L3 agent review,
-Docker build, other-platform compilation and hosted CI were not run locally.
+score does not establish live eBird API behavior. The optional L3 agent check and
+documentation review also passed, run with the deterministic fixture wrapper for
+authenticated functions and the public Status sample for migration tasks. The
+agent score was 100/100; the combined semantic score was 92/100 with zero findings.
+This does not establish live authenticated access. Hosted CI built the Docker
+image and compiled/tested the Windows executable; local execution used macOS ARM64.
+
+The pre-release hosted run is [GitHub CI 43461372220](https://github.com/Query-farm/vgi-ducks/actions/runs/43461372220).
 
 ## Tested attach and query
 
