@@ -14,17 +14,32 @@ as SQL tables in DuckDB. Written in TypeScript using the Query Farm VGI starter.
 
 ## See the queries and charts
 
-[Open the executed notebook](notebooks/spatial-migration.ipynb) for a duck taxonomy
-chart, seasonal range maps, spatial joins, and a weekly abundance curve with
-coverage. GitHub displays its saved tables and PNG figures directly.
+[Open Ducks in Virginia](notebooks/spatial-migration.ipynb) for five saved charts:
+observation locations, species counts, monthly reporting patterns, modeled weekly
+abundance, and water-feature maps for Northern Virginia, Richmond, and Hampton
+Roads. Analytical SQL and tables remain visible; setup and plotting cells are
+omitted from this GitHub reader.
 
-![Weekly abundance and modeled-cell coverage for Cornell's non-duck Yellow-bellied Sapsucker sample](notebooks/images/weekly-abundance.png)
+![Duck observations beside Overture water features in three Virginia regions](notebooks/images/virginia-ducks-water.png)
 
-The notebook runs against the published `v0.1.0` worker and requires no personal
-key. Its migration charts use Cornell's explicitly labeled **non-duck** public
-sample in Michigan. The worker remains TypeScript; notebook SQL queries use
-JupySQL, with Python for plotting. Run `make notebook` to execute every cell and
-refresh the saved charts, or follow the notebook's instructions for JupyterLab.
+The notebook combines the published `v0.1.0` duck worker with the local TypeScript
+[Overture worker](https://github.com/Query-farm/vgi-overture-maps-typescript), pinned
+to Overture release `2026-10-21.0`. The saved run contains 580 Virginia observation
+records across 29 duck species from iNaturalist/GBIF in 2024–2025. Separately,
+authenticated eBird Status and Trends products supply the 2023 annual cycles and
+seasonal ranges of Wood Duck, Bufflehead, and Blue-winged Teal. Reporting counts,
+modeled relative abundance, and water proximity have distinct interpretations;
+the notebook explains each.
+
+Viewing the saved notebook needs no key. To regenerate it, configure your own
+`EBIRDST_KEY` in the environment, install the Overture checkout beside this repo
+with `bun install --frozen-lockfile`, and run `make notebook`. Set
+`VGI_OVERTURE_REPO` for another checkout location. The
+[complete executable source](notebooks/virginia-ducks.source.ipynb) includes
+collapsed setup cells and JupyterLab instructions. Python handles Jupyter,
+public GBIF retrieval, and plotting; analysis runs in SQL and both VGI workers
+remain TypeScript. Raw observations are cached locally in ignored `.cache/`;
+credentials and source eBird rasters are not saved in the repository.
 
 ## Quick start
 

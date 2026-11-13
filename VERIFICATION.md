@@ -104,21 +104,25 @@ this comparison nor the sample establishes authenticated duck-product access.
 
 ## Live limitations
 
-No personal `EBIRD_API_KEY` or `EBIRDST_KEY` was configured. **Live sightings,
-hotspot queries and authenticated duck Status downloads were not run**; those
-paths were verified through deterministic fixtures over all
-three VGI transports and stock DuckDB. `make test-live` is provided for an account
-holder and refuses to run without the key. It clears the fixture endpoint override.
-The public, pinned taxonomy and public Status sample were fetched and checked
-live without a key. Other model releases and authenticated product codes remain
-unverified; the default model year is explicitly 2023.
+No personal `EBIRD_API_KEY` was configured. **Live recent-sightings and hotspot
+queries were not run**; those paths were verified through deterministic fixtures
+over all three VGI transports and stock DuckDB. `make test-live` is provided for
+an account holder and refuses to run without the key.
+
+A separate Status and Trends key was supplied for the Virginia notebook below.
+Authenticated 2023 seasonal ranges and weekly abundance were successfully read
+for Wood Duck (`wooduc`), Bufflehead (`buffle`), and Blue-winged Teal (`buwtea`)
+at 27 km. The key was passed only through the process environment and was not
+written to notebook cells, outputs, or the repository. Other authenticated
+species, resolutions, and model releases remain unverified. The default model
+year remains explicitly 2023. All fixture endpoint overrides were cleared.
 
 The metadata checker executes only the credential-free species example; its L2
 score does not establish live eBird API behavior. The optional L3 agent check and
 documentation review also passed, run with the deterministic fixture wrapper for
 authenticated functions and the public Status sample for migration tasks. The
 agent score was 100/100; the combined semantic score was 92/100 with zero findings.
-This does not establish live authenticated access. Hosted CI built the Docker
+These metadata checks do not themselves establish live authenticated access. Hosted CI built the Docker
 image and compiled/tested the Windows executable; local execution used macOS ARM64.
 
 The pre-release hosted run is [GitHub CI 43461372220](https://github.com/Query-farm/vgi-ducks/actions/runs/43461372220).
@@ -165,22 +169,68 @@ ORDER BY season;
 See [migration-demo.sql](migration-demo.sql) for a polygon join, weekly summaries
 and the peak calendar using the same public sample.
 
-## Executed visual notebook
+## Executed Virginia notebook
 
-[notebooks/spatial-migration.ipynb](notebooks/spatial-migration.ipynb) executes 15
-code cells against stock DuckDB 2.0.0 and the published `v0.1.0` worker, attached
-with `github-auto://Query-farm/vgi-ducks@v0.1.0`. It includes three embedded PNG
-figures: duck genus richness, four seasonal range maps, and weekly abundance with
-modeled-cell coverage. The map and abundance figures explicitly identify the
-non-duck public sample. No personal key or fixture endpoint is used.
+[Reader notebook](notebooks/spatial-migration.ipynb) and
+[executable source](notebooks/virginia-ducks.source.ipynb) were regenerated using
+`make notebook`. All 26 source code cells executed through stock DuckDB 2.0.0.
+The duck worker was the published `v0.1.0` executable, attached through
+`github-auto://Query-farm/vgi-ducks@v0.1.0`. The second catalog was the local
+TypeScript Overture worker at commit
+`d23d65e422d2b93a7faa264c718691520a05bd23`, using release `2026-10-21.0`.
+Its native Parquet scans include all four required bounding-box predicates.
 
-`make notebook` runs the pinned Python 3.12 notebook environment, executes every
-cell, validates the notebook, checks that all three figures are embedded, and
-writes a local HTML preview. The final notebook cell checks 52 unique weeks,
-coverage bounds and the expected April 19 peak against the weekly curve. Standalone
-PNGs are saved under `notebooks/images/` for README display. The figures were
-visually inspected for labels and geometry; the notebook is under 0.5 MB.
+The run retrieved all 800 eligible family-level records from the GBIF occurrence
+API, restricted to iNaturalist Research-grade Observations, Virginia, 2024–2025,
+human observations marked present, coordinates without flagged geospatial issues,
+known coordinate uncertainty of 0–250 meters, and record-level CC0/CC BY licenses.
+Pagination counts and unique record identifiers were validated before caching.
+Exact scientific-name matching against extant ducks retained 582 records;
+`ST_Covers` against Overture's territorial Virginia geometry retained 580 records
+across 29 species. The local cache includes source links, licenses, query filters,
+retrieval time and SHA256; raw observations are not committed.
 
-Python is used for Jupyter/plotting only; all data retrieval and analysis queries
-go through SQL and the TypeScript worker. JupySQL uses the DuckDB SQLAlchemy
-connection to retain temporary tables and session variables across cells.
+Overture supplied both territorial and land boundary variants. A simplified
+territorial polygon with 181 vertices selected 149 native 27 km cell centers for
+each eBird model. Authenticated downloads produced 156 weekly rows and 12 valid
+seasonal range geometries. Every selected center had a modeled value in every
+week for these three products. Model review configuration was checked separately:
+all four seasons passed review with quality 3 for each selected species.
+
+| 2023 model | Highest modeled week | Mean relative abundance |
+| --- | --- | --- |
+| Wood Duck | March 22 | 0.3407222494520497 |
+| Bufflehead | December 27 | 1.5731030255540481 |
+| Blue-winged Teal | April 5 | 0.022746213539909795 |
+
+These are regional modeled relative-abundance peaks, not arrival dates or total
+populations. The notebook separately intersects the seasonal range polygons with
+Virginia and reports territorial area overlap. Its model-year labels, grid-center
+selection, simplification tolerance, coverage definition, and limits are explicit.
+
+The three local water windows retained 206 records in Northern Virginia, 29 near
+Richmond, and 64 in Hampton Roads. After projection to EPSG:26918, `ST_DWithin`
+found 183, 28, and 62 records respectively within 500 m of the selected mapped
+water polygons. Pools, drainage basins, and wastewater features are excluded.
+This proximity calculation uses recorded coordinates and does not establish
+habitat suitability or public access.
+
+Five figures were visually inspected: the state observation map, top-species
+counts, monthly reporting heatmap, three-species annual model curves with
+coverage, and three local water maps. SQL performs the joins, spatial predicates,
+aggregates, and VGI function calls. Python handles public GBIF retrieval and
+plotting. JupySQL uses one SQLAlchemy connection so temporary tables and session
+variables persist.
+
+The renderer validates both notebook files, checks that every source cell ran,
+requires five embedded PNGs, and rejects outputs containing configured credentials.
+It generates the reader by removing setup cells and turning plotted figures into
+Markdown image attachments. Analytical SQL and result tables remain visible;
+the complete source preserves all setup code with Jupyter collapse metadata.
+A standalone HTML preview is written to ignored `dist/notebooks/`.
+
+The notebook's final checks cover observation uniqueness, species/month totals,
+Virginia containment, all three water windows, 52 unique weeks per model,
+nonnegative abundance, coverage bounds, and valid seasonal geometries.
+`make check` was rerun after the notebook work: all unit and SQL transport checks
+passed, and vgi-lint remained 100/100 with zero findings at L2.
