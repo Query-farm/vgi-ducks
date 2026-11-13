@@ -1,0 +1,104 @@
+{
+  "engine": "stock DuckDB",
+  "engine_version": "2.0.0",
+  "catalog": "ducks",
+  "mode": "public Status sample",
+  "attach_sql": "ATTACH 'ducks' (TYPE vgi, LOCATION '/private/var/folders/5z/17gt9js944s7smk125j23jr80000gn/T/vgi-ducks-package-yjzjafxj/vgi-ducks-worker')",
+  "verified_at": "2026-11-13T16:09:04.227904+00:00",
+  "checks": [
+    {
+      "name": "public_sample_seasons",
+      "passed": true,
+      "rows": [
+        [
+          "yebsap",
+          "yebsap-example",
+          "breeding",
+          "2023-05-17",
+          "2023-08-16",
+          false
+        ],
+        [
+          "yebsap",
+          "yebsap-example",
+          "nonbreeding",
+          "2023-11-22",
+          "2023-03-08",
+          true
+        ],
+        [
+          "yebsap",
+          "yebsap-example",
+          "postbreeding_migration",
+          "2023-08-23",
+          "2023-11-15",
+          false
+        ],
+        [
+          "yebsap",
+          "yebsap-example",
+          "prebreeding_migration",
+          "2023-03-15",
+          "2023-05-10",
+          false
+        ]
+      ]
+    },
+    {
+      "name": "public_sample_spatial_join",
+      "passed": true,
+      "rows": [
+        [
+          "breeding"
+        ],
+        [
+          "postbreeding_migration"
+        ],
+        [
+          "prebreeding_migration"
+        ]
+      ]
+    },
+    {
+      "name": "public_sample_valid_wgs84",
+      "passed": true,
+      "rows": [
+        [
+          "EPSG:4326",
+          4,
+          true
+        ]
+      ]
+    },
+    {
+      "name": "public_sample_52_weeks",
+      "passed": true,
+      "rows": [
+        [
+          52,
+          52,
+          "2023-01-04",
+          "2023-12-27",
+          779,
+          779
+        ]
+      ]
+    },
+    {
+      "name": "public_sample_peak",
+      "passed": true,
+      "rows": [
+        [
+          "2023-04-19",
+          0.644704,
+          1.89001,
+          779,
+          289,
+          0.370988
+        ]
+      ]
+    }
+  ],
+  "extension_version": "e75482339d",
+  "expected_error_checks": 0
+}

@@ -1,0 +1,5 @@
+[
+  {"locId":"L100","locName":"Fixture Harbor","countryCode":"US","subnational1Code":"US-MA","subnational2Code":"US-MA-025","lat":42.36,"lng":-71.06,"latestObsDt":"2026-11-12 08:15","numSpeciesAllTime":120},
+  {"locId":"L102","locName":"Fixture Marsh (Restricted Access)","countryCode":"US","subnational1Code":"US-MA","lat":42.38,"lng":-71.08},
+  {"locId":"L103","locName":"Fixture Wetland","countryCode":"US","lat":42.39,"lng":-71.07,"latestObsDt":"2026-11-10","numSpeciesAllTime":0}
+]

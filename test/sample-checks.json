@@ -1,0 +1,94 @@
+[
+  {
+    "name": "public_sample_seasons",
+    "sql": "SELECT species_code, product_species_code, season, start_date, end_date, wraps_year FROM ducks.main.seasonal_ranges('yebsap-example') ORDER BY season",
+    "rows": [
+      [
+        "yebsap",
+        "yebsap-example",
+        "breeding",
+        "2023-05-17",
+        "2023-08-16",
+        false
+      ],
+      [
+        "yebsap",
+        "yebsap-example",
+        "nonbreeding",
+        "2023-11-22",
+        "2023-03-08",
+        true
+      ],
+      [
+        "yebsap",
+        "yebsap-example",
+        "postbreeding_migration",
+        "2023-08-23",
+        "2023-11-15",
+        false
+      ],
+      [
+        "yebsap",
+        "yebsap-example",
+        "prebreeding_migration",
+        "2023-03-15",
+        "2023-05-10",
+        false
+      ]
+    ]
+  },
+  {
+    "name": "public_sample_spatial_join",
+    "sql": "SELECT season FROM ducks.main.seasonal_ranges('yebsap-example') AS r JOIN (SELECT ST_Point(-85,45) AS geom) AS site ON ST_Intersects(ST_GeomFromWKB(r.geometry_wkb), site.geom) ORDER BY season",
+    "rows": [
+      [
+        "breeding"
+      ],
+      [
+        "postbreeding_migration"
+      ],
+      [
+        "prebreeding_migration"
+      ]
+    ]
+  },
+  {
+    "name": "public_sample_valid_wgs84",
+    "sql": "SELECT geometry_crs, count(*), bool_and(ST_IsValid(ST_GeomFromWKB(geometry_wkb))) FROM ducks.main.seasonal_ranges('yebsap-example') GROUP BY geometry_crs",
+    "rows": [
+      [
+        "EPSG:4326",
+        4,
+        true
+      ]
+    ]
+  },
+  {
+    "name": "public_sample_52_weeks",
+    "sql": "SELECT count(*), count(DISTINCT week_date), min(week_date), max(week_date), min(selected_cell_count), max(selected_cell_count) FROM ducks.main.weekly_abundance('yebsap-example', 'POLYGON((-90 41,-82 41,-82 49,-90 49,-90 41))')",
+    "rows": [
+      [
+        52,
+        52,
+        "2023-01-04",
+        "2023-12-27",
+        779,
+        779
+      ]
+    ]
+  },
+  {
+    "name": "public_sample_peak",
+    "sql": "SELECT week_date, round(mean_relative_abundance,6), round(max_relative_abundance,6), selected_cell_count, modeled_cell_count, round(coverage_fraction,6) FROM ducks.main.migration_calendar('yebsap-example', 'POLYGON((-90 41,-82 41,-82 49,-90 49,-90 41))') ORDER BY week_date",
+    "rows": [
+      [
+        "2023-04-19",
+        0.644704,
+        1.89001,
+        779,
+        289,
+        0.370988
+      ]
+    ]
+  }
+]

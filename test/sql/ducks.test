@@ -1,0 +1,214 @@
+# eBird fixture contract: exercised through Haybarn stdio, launch and HTTP.
+require vgi
+
+require-env DUCKS_WORKER
+
+statement ok
+ATTACH 'ducks' (TYPE vgi, LOCATION '{DUCKS_WORKER}');
+
+# Offline taxonomy does not require a key.
+query I
+SELECT count(*) FROM ducks.main.species;
+----
+140
+
+statement error
+SELECT * FROM ducks.main.recent_sightings(42.36,-71.06);
+----
+API key required
+
+# Public fake key for the local fixture only, not a live credential.
+statement ok
+CREATE SECRET ducks_fixture (TYPE ebird, TOKEN 'fixture-token');
+
+# offline taxonomy
+query III
+SELECT count(*), count(*) FILTER (WHERE extinct), count(DISTINCT species_code) FROM ducks.main.species;
+----
+140	9	140
+
+# Mallard code
+query TTT
+SELECT species_code, scientific_name, taxonomy_version FROM ducks.main.species WHERE common_name='Mallard' ORDER BY species_code;
+----
+mallar3	Anas platyrhynchos	2026
+
+# duck scope
+query I
+SELECT count(*) FROM ducks.main.species WHERE species_code IN ('cangoo','mutswa','mallar2','egygoo');
+----
+0
+
+# latest per species
+query TTIII
+SELECT common_name, observed_at_local, reported_count, observation_valid::INTEGER, observation_reviewed::INTEGER FROM ducks.main.recent_sightings(42.36,-71.06) ORDER BY common_name;
+----
+Mallard	2026-11-12 08:15	7	1	0
+Wood Duck	2026-11-11	NULL	1	1
+
+# species endpoint
+query TIIT
+SELECT location_id, reported_count, observation_reviewed::INTEGER, checklist_id FROM ducks.main.recent_sightings(42.36,-71.06,species_code := 'mallar3') ORDER BY location_id;
+----
+L100	7	0	S100
+L102	0	NULL	NULL
+
+# source location
+query TRRRI
+SELECT location_id, latitude, longitude, distance_km, location_private::INTEGER FROM ducks.main.recent_sightings(42.36,-71.06) WHERE species_code='mallar3';
+----
+L100	42.36	-71.06	0.0	0
+
+# hotspots only
+query T
+SELECT common_name FROM ducks.main.recent_sightings(42.36,-71.06, hotspots_only := true, days_back := 30, include_provisional := true) ORDER BY common_name;
+----
+Mallard
+
+# empty sightings
+query I
+SELECT count(*) FROM ducks.main.recent_sightings(-90,0);
+----
+0
+
+# hotspots optional metadata
+query TIT
+SELECT location_id, all_bird_species_count, latest_observation_local FROM ducks.main.nearby_hotspots(42.36,-71.06) ORDER BY location_id;
+----
+L100	120	2026-11-12 08:15
+L102	NULL	NULL
+L103	0	2026-11-10
+
+# hotspot recency
+query I
+SELECT count(*) FROM ducks.main.nearby_hotspots(42.36,-71.06,days_back := 7);
+----
+2
+
+# empty hotspots
+query I
+SELECT count(*) FROM ducks.main.nearby_hotspots(-90,0);
+----
+0
+
+# sighting-hotspot join
+query TTI
+SELECT s.common_name,h.location_name,h.all_bird_species_count FROM ducks.main.recent_sightings(42.36,-71.06) s JOIN ducks.main.nearby_hotspots(42.36,-71.06) h USING(location_id) ORDER BY s.common_name;
+----
+Mallard	Fixture Harbor	120
+
+# snapshot timestamp
+query I
+SELECT (min(epoch(fetched_at)) > 0)::INTEGER FROM ducks.main.recent_sightings(42.36,-71.06);
+----
+1
+
+# rounded center distance
+query R
+SELECT distance_km FROM ducks.main.nearby_hotspots(42.364,-71.064,radius_km := 25.5) WHERE location_id='L100';
+----
+0.0
+
+# SQL output types
+query TTTTT
+SELECT typeof(reported_count),typeof(observed_at_local),typeof(observation_valid),typeof(fetched_at),typeof(latitude) FROM ducks.main.recent_sightings(42.36,-71.06) LIMIT 1;
+----
+INTEGER	VARCHAR	BOOLEAN	TIMESTAMP WITH TIME ZONE	DOUBLE
+
+# NULL positional
+statement error
+SELECT * FROM ducks.main.recent_sightings(NULL,0);
+----
+NULL
+
+# NULL optional
+statement error
+SELECT * FROM ducks.main.recent_sightings(42,-71,days_back := NULL);
+----
+NULL
+
+# NULL hotspot radius
+statement error
+SELECT * FROM ducks.main.nearby_hotspots(42,-71,radius_km := NULL);
+----
+NULL
+
+# latitude range
+statement error
+SELECT * FROM ducks.main.recent_sightings(91,0);
+----
+<REGEX>:.*
+
+# NaN latitude
+statement error
+SELECT * FROM ducks.main.recent_sightings('nan'::DOUBLE,0);
+----
+<REGEX>:.*
+
+# radius range
+statement error
+SELECT * FROM ducks.main.nearby_hotspots(42,-71,radius_km := 51);
+----
+<REGEX>:.*
+
+# lookback range
+statement error
+SELECT * FROM ducks.main.recent_sightings(42,-71,days_back := 31);
+----
+<REGEX>:.*
+
+# non-duck code
+statement error
+SELECT * FROM ducks.main.recent_sightings(42,-71,species_code := 'cangoo');
+----
+species_code
+
+# extinct code
+statement error
+SELECT * FROM ducks.main.recent_sightings(42,-71,species_code := 'labduc');
+----
+extinct
+
+# malformed JSON shape
+statement error
+SELECT * FROM ducks.main.recent_sightings(-89,0);
+----
+expected an array
+
+# upstream forbidden
+statement error
+SELECT * FROM ducks.main.recent_sightings(-87,0);
+----
+HTTP 403
+
+# retry exhaustion
+statement error
+SELECT * FROM ducks.main.recent_sightings(-88,0);
+----
+HTTP 503
+
+# truncated response
+statement error
+SELECT * FROM ducks.main.recent_sightings(-86,0);
+----
+10000-record limit
+
+# invalid count
+statement error
+SELECT * FROM ducks.main.recent_sightings(-85,0);
+----
+reported count
+
+statement ok
+DROP SECRET ducks_fixture;
+
+statement ok
+CREATE SECRET ducks_wrong (TYPE ebird, TOKEN 'wrong-fixture-key');
+
+statement error
+SELECT * FROM ducks.main.nearby_hotspots(42.36,-71.06);
+----
+HTTP 401
+
+statement ok
+DROP SECRET ducks_wrong;

@@ -1,0 +1,340 @@
+{
+  "schema_version": 1,
+  "catalog": "ducks",
+  "worker": [
+    "bin/vgi-ducks-worker"
+  ],
+  "checks": [
+    {
+      "name": "offline taxonomy",
+      "sql": "SELECT count(*), count(*) FILTER (WHERE extinct), count(DISTINCT species_code) FROM ducks.main.species",
+      "rows": [
+        [
+          140,
+          9,
+          140
+        ]
+      ]
+    },
+    {
+      "name": "Mallard code",
+      "sql": "SELECT species_code, scientific_name, taxonomy_version FROM ducks.main.species WHERE common_name='Mallard' ORDER BY species_code",
+      "rows": [
+        [
+          "mallar3",
+          "Anas platyrhynchos",
+          "2026"
+        ]
+      ]
+    },
+    {
+      "name": "duck scope",
+      "sql": "SELECT count(*) FROM ducks.main.species WHERE species_code IN ('cangoo','mutswa','mallar2','egygoo')",
+      "rows": [
+        [
+          0
+        ]
+      ]
+    },
+    {
+      "name": "latest per species",
+      "sql": "SELECT common_name, observed_at_local, reported_count, observation_valid::INTEGER, observation_reviewed::INTEGER FROM ducks.main.recent_sightings(42.36,-71.06) ORDER BY common_name",
+      "rows": [
+        [
+          "Mallard",
+          "2026-11-12 08:15",
+          7,
+          1,
+          0
+        ],
+        [
+          "Wood Duck",
+          "2026-11-11",
+          null,
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "species endpoint",
+      "sql": "SELECT location_id, reported_count, observation_reviewed::INTEGER, checklist_id FROM ducks.main.recent_sightings(42.36,-71.06,species_code := 'mallar3') ORDER BY location_id",
+      "rows": [
+        [
+          "L100",
+          7,
+          0,
+          "S100"
+        ],
+        [
+          "L102",
+          0,
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "name": "source location",
+      "sql": "SELECT location_id, latitude, longitude, distance_km, location_private::INTEGER FROM ducks.main.recent_sightings(42.36,-71.06) WHERE species_code='mallar3'",
+      "rows": [
+        [
+          "L100",
+          42.36,
+          -71.06,
+          0.0,
+          0
+        ]
+      ]
+    },
+    {
+      "name": "hotspots only",
+      "sql": "SELECT common_name FROM ducks.main.recent_sightings(42.36,-71.06, hotspots_only := true, days_back := 30, include_provisional := true) ORDER BY common_name",
+      "rows": [
+        [
+          "Mallard"
+        ]
+      ]
+    },
+    {
+      "name": "empty sightings",
+      "sql": "SELECT count(*) FROM ducks.main.recent_sightings(-90,0)",
+      "rows": [
+        [
+          0
+        ]
+      ]
+    },
+    {
+      "name": "hotspots optional metadata",
+      "sql": "SELECT location_id, all_bird_species_count, latest_observation_local FROM ducks.main.nearby_hotspots(42.36,-71.06) ORDER BY location_id",
+      "rows": [
+        [
+          "L100",
+          120,
+          "2026-11-12 08:15"
+        ],
+        [
+          "L102",
+          null,
+          null
+        ],
+        [
+          "L103",
+          0,
+          "2026-11-10"
+        ]
+      ]
+    },
+    {
+      "name": "hotspot recency",
+      "sql": "SELECT count(*) FROM ducks.main.nearby_hotspots(42.36,-71.06,days_back := 7)",
+      "rows": [
+        [
+          2
+        ]
+      ]
+    },
+    {
+      "name": "empty hotspots",
+      "sql": "SELECT count(*) FROM ducks.main.nearby_hotspots(-90,0)",
+      "rows": [
+        [
+          0
+        ]
+      ]
+    },
+    {
+      "name": "sighting-hotspot join",
+      "sql": "SELECT s.common_name,h.location_name,h.all_bird_species_count FROM ducks.main.recent_sightings(42.36,-71.06) s JOIN ducks.main.nearby_hotspots(42.36,-71.06) h USING(location_id) ORDER BY s.common_name",
+      "rows": [
+        [
+          "Mallard",
+          "Fixture Harbor",
+          120
+        ]
+      ]
+    },
+    {
+      "name": "snapshot timestamp",
+      "sql": "SELECT (min(epoch(fetched_at)) > 0)::INTEGER FROM ducks.main.recent_sightings(42.36,-71.06)",
+      "rows": [
+        [
+          1
+        ]
+      ]
+    },
+    {
+      "name": "rounded center distance",
+      "sql": "SELECT distance_km FROM ducks.main.nearby_hotspots(42.364,-71.064,radius_km := 25.5) WHERE location_id='L100'",
+      "rows": [
+        [
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "SQL output types",
+      "sql": "SELECT typeof(reported_count),typeof(observed_at_local),typeof(observation_valid),typeof(fetched_at),typeof(latitude) FROM ducks.main.recent_sightings(42.36,-71.06) LIMIT 1",
+      "rows": [
+        [
+          "INTEGER",
+          "VARCHAR",
+          "BOOLEAN",
+          "TIMESTAMP WITH TIME ZONE",
+          "DOUBLE"
+        ]
+      ]
+    },
+    {
+      "name": "season dates and year wrapping",
+      "sql": "SELECT season,start_date,end_date,wraps_year::INTEGER,geometry_crs FROM ducks.main.seasonal_ranges('mallar3') ORDER BY season",
+      "rows": [
+        [
+          "breeding",
+          "2023-05-17",
+          "2023-08-16",
+          0,
+          "EPSG:4326"
+        ],
+        [
+          "nonbreeding",
+          "2023-11-22",
+          "2023-03-08",
+          1,
+          "EPSG:4326"
+        ]
+      ]
+    },
+    {
+      "name": "range spatial intersection with hole",
+      "sql": "SELECT season FROM ducks.main.seasonal_ranges('mallar3') WHERE ST_Intersects(ST_GeomFromWKB(geometry_wkb),ST_Point(0.25,0.25)) ORDER BY season",
+      "rows": [
+        [
+          "breeding"
+        ]
+      ]
+    },
+    {
+      "name": "range hole excludes point",
+      "sql": "SELECT count(*) FROM ducks.main.seasonal_ranges('mallar3') WHERE ST_Contains(ST_GeomFromWKB(geometry_wkb),ST_Point(0.75,0.75))",
+      "rows": [
+        [
+          0
+        ]
+      ]
+    },
+    {
+      "name": "range polygon spatial join",
+      "sql": "SELECT r.season FROM ducks.main.seasonal_ranges('mallar3') r JOIN (SELECT ST_GeomFromText('POLYGON((-1 -1,-0.5 -1,-0.5 -0.5,-1 -0.5,-1 -1))') geom) wetland ON ST_Intersects(ST_GeomFromWKB(r.geometry_wkb),wetland.geom) ORDER BY r.season",
+      "rows": [
+        [
+          "nonbreeding"
+        ]
+      ]
+    },
+    {
+      "name": "season filter",
+      "sql": "SELECT count(*) FROM ducks.main.seasonal_ranges('mallar3',season := 'resident')",
+      "rows": [
+        [
+          0
+        ]
+      ]
+    },
+    {
+      "name": "weekly relative abundance",
+      "sql": "SELECT week_date,mean_relative_abundance,max_relative_abundance,selected_cell_count,modeled_cell_count,round(coverage_fraction,6) FROM ducks.main.weekly_abundance('mallar3','POLYGON((-1 -1,2 -1,2 2,-1 2,-1 -1))') ORDER BY week_date",
+      "rows": [
+        [
+          "2023-01-04",
+          3.0,
+          6.0,
+          6,
+          4,
+          0.666667
+        ],
+        [
+          "2023-01-11",
+          6.0,
+          11.0,
+          6,
+          6,
+          1.0
+        ],
+        [
+          "2023-01-18",
+          null,
+          null,
+          6,
+          0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "name": "positive seasonal peak",
+      "sql": "SELECT week_date,mean_relative_abundance FROM ducks.main.migration_calendar('mallar3','POLYGON((-1 -1,2 -1,2 2,-1 2,-1 -1))') ORDER BY week_date",
+      "rows": [
+        [
+          "2023-01-11",
+          6.0
+        ]
+      ]
+    },
+    {
+      "name": "empty geographic coverage",
+      "sql": "SELECT week_date,mean_relative_abundance,selected_cell_count,coverage_fraction FROM ducks.main.weekly_abundance('mallar3','POLYGON((40 40,41 40,41 41,40 41,40 40))') ORDER BY week_date",
+      "rows": [
+        [
+          "2023-01-04",
+          null,
+          0,
+          null
+        ],
+        [
+          "2023-01-11",
+          null,
+          0,
+          null
+        ],
+        [
+          "2023-01-18",
+          null,
+          0,
+          null
+        ]
+      ]
+    },
+    {
+      "name": "empty peak calendar",
+      "sql": "SELECT count(*) FROM ducks.main.migration_calendar('mallar3','POLYGON((40 40,41 40,41 41,40 41,40 40))')",
+      "rows": [
+        [
+          0
+        ]
+      ]
+    },
+    {
+      "name": "region WKB round trip",
+      "sql": "SELECT DISTINCT ST_Area(ST_GeomFromWKB(region_wkb)),geometry_crs FROM ducks.main.weekly_abundance('mallar3','POLYGON((-1 -1,2 -1,2 2,-1 2,-1 -1))') ORDER BY ALL",
+      "rows": [
+        [
+          9.0,
+          "EPSG:4326"
+        ]
+      ]
+    },
+    {
+      "name": "migration SQL schema",
+      "sql": "SELECT typeof(geometry_wkb),typeof(prediction_year),typeof(wraps_year) FROM ducks.main.seasonal_ranges('mallar3') LIMIT 1",
+      "rows": [
+        [
+          "BLOB",
+          "INTEGER",
+          "BOOLEAN"
+        ]
+      ]
+    }
+  ]
+}

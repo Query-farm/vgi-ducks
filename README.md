@@ -1,319 +1,308 @@
-<!-- managed-by: vgi-starters (edit upstream in shared/README.md.tmpl, then run tools/render.py) -->
-<p align="center">
-  <img src="https://query.farm/media-kit/products/vgi/vgi-logo.png" alt="Vector Gateway Interface (VGI)" width="320">
-</p>
+# vgi-ducks
 
-<p align="center"><em>A Query.Farm VGI worker for DuckDB, written in TypeScript.</em></p>
+Duck species, recent sightings, birding hotspots, and spatial migration patterns
+as SQL tables in DuckDB. Written in TypeScript using the Query Farm VGI starter.
 
-# VGI Starter Worker — TypeScript
-
-[![CI](https://github.com/Query-farm/vgi-starter-typescript/actions/workflows/ci.yml/badge.svg)](https://github.com/Query-farm/vgi-starter-typescript/actions/workflows/ci.yml)
-[![vgi worker: query.farm](https://query.farm/media-kit/shields/vgi-worker.svg)](https://query.farm)
-
-[VGI](https://query.farm/vgi) lets DuckDB call functions that live in a separate
-process: your code, in any language, exposed as ordinary SQL. This worker adds
-three example functions that you rename and replace with your own:
-
-| Function | Kind | Shows you how to |
-|---|---|---|
-| `greet(name)` / `greet(name, style)` | scalar | vectorize over a column, overload, constrain a constant |
-| `sequence_table(count, step := 1)` | table | stream rows in batches, take named arguments |
-| `fetch_items(base_url, page_size := 100)` | table | page through a REST API, retry, read a secret |
-
-<!-- template-only:start -->
-## Use this template
-
-This repository is a **template**. Click **Use this template** on GitHub, or:
-
-```bash
-gh repo create my-org/weather-worker --template Query-farm/vgi-starter-typescript --private --clone
-cd weather-worker
-make init NAME=weather     # renames catalog, package, binary, env vars; removes this section
-make check                 # lint + tests over every transport + metadata score
-```
-
-Prefer to work with an AI coding agent? `make init` first, then hand it
-[AGENTS.md](AGENTS.md). See [Using with coding agents](#using-with-coding-agents).
-
-Starters exist for [Python](https://github.com/Query-farm/vgi-starter-python),
-[TypeScript](https://github.com/Query-farm/vgi-starter-typescript),
-[Go](https://github.com/Query-farm/vgi-starter-go),
-[Rust](https://github.com/Query-farm/vgi-starter-rust),
-[Java](https://github.com/Query-farm/vgi-starter-java) and
-[C#](https://github.com/Query-farm/vgi-starter-csharp). They are generated from
-[Query-farm/vgi-starters](https://github.com/Query-farm/vgi-starters); send
-changes there.
-<!-- template-only:end -->
+| SQL interface | Purpose |
+| --- | --- |
+| `ducks.main.species` | Offline eBird 2026 reference: 140 duck species, including 9 flagged extinct taxa |
+| `ducks.main.recent_sightings(latitude, longitude, ...)` | Latest nearby observation per duck species, or per location for a selected species |
+| `ducks.main.nearby_hotspots(latitude, longitude, ...)` | Nearby birding locations, with distances and all-bird reporting history |
+| `ducks.main.seasonal_ranges(species_code, ...)` | Modeled seasonal range polygons as WGS84 WKB for spatial joins |
+| `ducks.main.weekly_abundance(species_code, region_wkt, ...)` | Weekly modeled relative abundance within a polygon, with coverage counts |
+| `ducks.main.migration_calendar(species_code, region_wkt, ...)` | All weeks tied for the highest positive regional mean abundance |
 
 ## Quick start
 
-**Prerequisites:** [Bun](https://bun.sh) 1.3+ and [uv](https://docs.astral.sh/uv/) (it runs the SQL
-test runner and the metadata checker).
+Standalone executables are available on the [GitHub releases page](https://github.com/Query-farm/vgi-ducks/releases).
+Download the archive for your platform and extract it. No Bun installation is
+needed for the executable; use its absolute path as the VGI `LOCATION` below.
+Releases include SHA256 checksums, Sigstore signatures and build provenance.
 
-```bash
+For a source checkout:
+
+Requires Bun 1.3+ and DuckDB 2.0.0. Development checks also require `make`, Python
+and [uv](https://docs.astral.sh/uv/).
+
+```sh
 make build
+uvx --from duckdb-cli==2.0.0 duckdb
 ```
-
-Then open DuckDB 2.0 or [Haybarn](https://query.farm/products/haybarn) and attach the
-worker. `LOCATION` is the command DuckDB runs to start it; use an absolute path,
-because a relative one resolves against DuckDB's working directory.
-
-**DuckDB 2.0:**
 
 ```sql
 SET allow_extension_repositories = 'allowed';
-CREATE EXTENSION REPOSITORY IF NOT EXISTS query_farm WITH PREFIX 'https://duckdb-extensions.query.farm';
+CREATE EXTENSION REPOSITORY IF NOT EXISTS query_farm
+    WITH PREFIX 'https://duckdb-extensions.query.farm';
 INSTALL vgi FROM query_farm;
 LOAD vgi FROM query_farm;
-ATTACH 'starter' (TYPE vgi, LOCATION '/abs/path/to/vgi-starter-typescript/bin/vgi-starter-worker');
+
+-- Use the absolute path to your checkout.
+ATTACH 'ducks' (
+    TYPE vgi,
+    LOCATION '/absolute/path/vgi-ducks/bin/vgi-ducks-worker'
+);
+
+-- Works offline and without a key.
+SELECT species_code, common_name, scientific_name
+FROM ducks.main.species
+WHERE genus = 'Aix' AND NOT extinct
+ORDER BY common_name;
 ```
 
-**Haybarn 2.0** (`uvx haybarn-cli`):
+To query sightings or hotspots, obtain your own [eBird API key](https://ebird.org/api/keygen).
+After attaching the worker, create a session secret:
 
 ```sql
-INSTALL vgi FROM community;
-LOAD vgi;
-ATTACH 'starter' (TYPE vgi, LOCATION '/abs/path/to/vgi-starter-typescript/bin/vgi-starter-worker');
+CREATE SECRET my_ebird (TYPE ebird, TOKEN 'your-personal-key');
+
+SELECT common_name, observed_at_local, reported_count, location_name
+FROM ducks.main.recent_sightings(42.36, -71.06)
+ORDER BY common_name;
+
+-- Look up the current code in the species table: Mallard is mallar3 in 2026.
+-- A species-specific search returns its latest sighting at EACH location.
+SELECT location_name, reported_count, observed_at_local, distance_km
+FROM ducks.main.recent_sightings(
+    42.36, -71.06, species_code := 'mallar3', days_back := 7
+)
+ORDER BY distance_km, location_name;
+
+SELECT location_name, distance_km, all_bird_species_count
+FROM ducks.main.nearby_hotspots(42.36, -71.06)
+ORDER BY distance_km, location_name
+LIMIT 5;
 ```
 
-Now call the functions:
+Alternatively, set `EBIRD_API_KEY` in the environment **before starting DuckDB or
+the worker**. A nonempty `ebird` secret takes precedence over that variable.
+The sightings API credential stays in request headers, never serialized
+table-function state. Sightings requests do not follow API redirects or include
+response bodies in errors.
+
+[demo.sql](demo.sql) contains runnable queries from the project directory. Its
+API section needs `EBIRD_API_KEY`; its first species query does not.
+
+## Spatial migration patterns
+
+These functions read [eBird Status and Trends](https://ebird.github.io/ebirdst/articles/status.html)
+seasonal GeoPackages and weekly GeoTIFFs directly in TypeScript. The worker needs
+no R, Python or GDAL runtime. DuckDB Spatial converts the returned ordinary WKB
+into geometry for joins with wetlands, refuges, counties, or your own locations.
+
+Try the real public sample without an access key after attaching the worker:
 
 ```sql
-SELECT starter.main.greet('Ada');                         -- Hi, Ada!
-SELECT starter.main.greet('Ada', 'formal');               -- Good day, Ada.
-SELECT * FROM starter.main.sequence_table(5, step := 2) ORDER BY n;
+INSTALL spatial FROM core;
+LOAD spatial;
+SET geometry_always_xy = true;
+
+SELECT season, start_date, end_date, wraps_year
+FROM ducks.main.seasonal_ranges('yebsap-example')
+WHERE ST_Intersects(ST_GeomFromWKB(geometry_wkb), ST_Point(-85, 45))
+ORDER BY season;
+
+SELECT week_date, mean_relative_abundance, coverage_fraction
+FROM ducks.main.weekly_abundance(
+  'yebsap-example', 'POLYGON((-90 41,-82 41,-82 49,-90 49,-90 41))'
+)
+ORDER BY week_date;
+
+SELECT week_date, mean_relative_abundance, modeled_cell_count, coverage_fraction
+FROM ducks.main.migration_calendar(
+  'yebsap-example', 'POLYGON((-90 41,-82 41,-82 49,-90 49,-90 41))'
+)
+ORDER BY week_date;
 ```
 
-`fetch_items` pages through a REST API. Try it against the public demo API (25 fixed items):
+**The public sample is Yellow-bellied Sapsucker data restricted to Michigan, not
+duck data.** It uses Cornell's [example dataset](https://github.com/ebird/ebirdst_example-data),
+pinned at commit `a3ab944f505ad6f583e0c830d5e951929446e9eb`, and supports only
+`data_year := 2023, resolution := '27km'`. It exercises the same readers as duck
+products. The sample region above peaks on `2023-04-19`.
+
+For duck products, obtain a separate [Status and Trends access key](https://ebird.org/st/request)
+and create a session secret after attaching:
 
 ```sql
-SELECT category, count(*) AS items, round(avg(price), 2) AS avg_price
-FROM starter.main.fetch_items('https://vgi-starter-api.query-farm.services/v1')
-GROUP BY category ORDER BY category;
+CREATE SECRET my_status (TYPE ebirdst, TOKEN 'your-status-access-key');
 ```
 
-If an older cached extension misbehaves, refresh it with `FORCE INSTALL vgi FROM query_farm;`
-(DuckDB) or `FORCE INSTALL vgi FROM community;` (Haybarn).
+Alternatively set `EBIRDST_KEY` before starting DuckDB or the worker. A nonempty
+`ebirdst` secret takes precedence. `EBIRD_API_KEY` is a different credential.
+Use a species code available in the selected model release; the 2026 taxonomy
+table does not establish the codes or coverage in a 2023 model. Unavailable
+products fail clearly. There is no silent taxonomy remapping. The reader also
+accepts other modeled birds, which makes mixed-species spatial comparisons possible.
 
-## Using it in a pipeline
+```text
+seasonal_ranges(species_code VARCHAR,
+  data_year := 2023, resolution := '27km', season := '')
+weekly_abundance(species_code VARCHAR, region_wkt VARCHAR,
+  data_year := 2023, resolution := '27km')
+migration_calendar(species_code VARCHAR, region_wkt VARCHAR,
+  data_year := 2023, resolution := '27km')
+```
 
-Worker functions compose with everything else in DuckDB:
+- `data_year` selects a model release/prediction year; 2023 is the verified
+  format and explicit default. These are modeled seasonal distributions, not
+  individual migration tracks or a live migration forecast.
+- Seasonal ranges support `27km` and `9km`. `season` optionally selects
+  `breeding`, `nonbreeding`, `prebreeding_migration`, `postbreeding_migration` or
+  `resident`. The empty string returns all available seasons. Original season
+  dates are preserved; `wraps_year` identifies winters crossing New Year.
+- Geometry is WGS84 (EPSG:4326), x = longitude, y = latitude. Weekly region
+  inputs accept 2D Polygon/MultiPolygon WKT with holes and disjoint parts.
+  Use `ST_AsText` on your geometry after transforming it to WGS84. Split regions
+  crossing the antimeridian into separate queries. Simplify to at most 2,000
+  vertices; rings must have nonzero area and must not cross or touch one another.
+- Weekly grids support `27km`, `9km` and `3km` when the upstream product exists.
+  The worker transforms native Equal Earth (EPSG:8857) cell centers to WGS84 and
+  selects centers strictly inside your polygon, excluding its holes and boundary.
+  Equal-area cells have equal weight. This is a center-based regional summary,
+  not an exact area-clipped mean. There is no interpolation or upsampling.
+- Relative abundance is the expected number of birds on a standardized
+  one-hour, two-kilometer checklist under the model's observation conditions.
+  Regional means/maxima are not total populations. **True zero stays zero;
+  NoData is excluded.** `modeled_cell_count / selected_cell_count` is
+  `coverage_fraction`. No modeled cells yields NULL abundance; no selected
+  centers yields NULL coverage. Coverage applies to cell centers within the
+  raster extent, not to the fraction of the entire polygon's area covered.
+- Original weekly dates are retained; available bands may be fewer than 52.
+  Compare coverage before interpreting changes. `migration_calendar` returns
+  all tied positive annual peak weeks, or no rows for an all-zero/missing series.
+  A peak can reflect breeding or winter residence; it does not establish an
+  arrival/departure date or prove that migration occurred that week.
+- Each call downloads its source products; materialize results with `CREATE
+  TEMP TABLE ... AS SELECT ...` for repeated analysis. Product downloads are
+  bounded to 128 MiB, with 60-second request timeouts and bounded retries. Signed
+  HTTPS download redirects are supported. Only a regional window is decoded,
+  limited to 50,000 cells. Use a smaller region or coarser product if necessary.
+  Large high-resolution products can exceed the download limit even for a small
+  region. Credentials, signed URLs and file bytes are never placed in table
+  state or diagnostics; the Status API requires its key in a request query parameter.
+
+For a polygon-to-polygon join, materialize seasonal ranges once, then join
+`ST_GeomFromWKB(r.geometry_wkb)` to a wetlands table using `ST_Intersects`.
+[migration-demo.sql](migration-demo.sql) is a complete, key-free example with
+a sample wetland, weekly summaries and the peak calendar.
+
+## Parameters and semantics
+
+```text
+recent_sightings(
+  latitude DOUBLE, longitude DOUBLE,
+  radius_km := 25, days_back := 14, species_code := '',
+  hotspots_only := false, include_provisional := false
+)
+nearby_hotspots(
+  latitude DOUBLE, longitude DOUBLE,
+  radius_km := 25, days_back := 0
+)
+```
+
+- WGS84 coordinates: latitude −90 to 90, longitude −180 to 180. The API search
+  center is rounded to two decimal places as documented by eBird; `distance_km`
+  is a great-circle distance from that rounded center, not a driving distance.
+- Radius is 0–50 km for both functions. Sighting lookback is 1–30 days.
+  Hotspot `days_back := 0` omits the recency filter; 1–30 restricts recent visits.
+- **An empty `species_code` returns the latest sighting per species across the
+  search area. A selected species returns the latest sighting per location.**
+  Neither is a full checklist history. The API does not paginate these endpoints.
+- Species searches use extant members of the bundled catalog. Geese, swans,
+  domestic forms, hybrids and unidentified groups are excluded; Nettapus
+  pygmy-geese are included as ducks. See [data provenance](data/README.md) for
+  the exact scope and refresh procedure. An unknown or extinct code is an error.
+- `observed_at_local` and `latest_observation_local` preserve eBird's original
+  `YYYY-MM-DD` or `YYYY-MM-DD HH:MM` text. No UTC offset is supplied, so these
+  values are **not** labeled UTC or converted to a fabricated timestamp.
+  `fetched_at` is the retrieval time as `TIMESTAMPTZ` in UTC.
+- `reported_count` is an INTEGER; absent/uncounted values are SQL NULL, while
+  actual zero stays zero. Counts and repeated sightings are not population
+  estimates. Review, validity and location-privacy flags are preserved separately.
+- Hotspots describe locations for **all birds**. Their `all_bird_species_count`
+  is an all-time count of bird species, not ducks or individuals. A hotspot name
+  can include access restrictions. Join sightings on `location_id` for evidence
+  that a duck was reported there.
+- Explicit NULL arguments are rejected. Missing optional response fields become
+  SQL NULL. Malformed data and upstream errors fail the query rather than becoming
+  empty results. True empty API arrays yield empty tables with the declared schema.
+- Calls use 20-second request timeouts, at most four attempts, and bounded backoff
+  for network errors, HTTP 429 and 5xx. `Retry-After` seconds and HTTP dates are
+  honored; delays exceeding 30 seconds fail clearly. Responses are capped at
+  8 MiB, and reaching 10,000 records fails to avoid silently truncated results.
+  No persistent sightings cache is used.
+
+To combine the sources without implying that every hotspot has ducks:
 
 ```sql
--- Materialize an API into a local table.
-CREATE TABLE items AS SELECT * FROM starter.main.fetch_items('https://vgi-starter-api.query-farm.services/v1');
-
--- Join it with local files.
-SELECT i.name, i.price, s.units
-FROM items i JOIN 'sales.parquet' s ON s.item_id = i.id;
-
--- Call a scalar per row of another table.
-SELECT customer, starter.main.greet(customer, 'formal') FROM read_csv('customers.csv');
+SELECT s.common_name, s.observed_at_local, h.location_name, h.distance_km
+FROM ducks.main.recent_sightings(42.36, -71.06) AS s
+JOIN ducks.main.nearby_hotspots(42.36, -71.06) AS h USING (location_id)
+ORDER BY s.common_name, h.location_name;
 ```
 
-## Project layout
+## Development and verification
 
-```
-src/
-  worker.ts        # entry point: serves the catalog over stdio, --unix or --http
-  catalog.ts       # assembles the catalog; add new functions to FUNCTIONS
-  meta.ts          # catalog/schema metadata + helpers (objectTags, column)
-  greet.ts         # scalar example (overloads, const param with choices)
-  sequence.ts      # table function example (named args, streaming state)
-  fetch_items.ts   # REST API table function (pagination, retries, secrets)
-  cli.ts           # flag parsing: stdio / --unix / --http (PORT:<n>, /health)
-  log.ts           # stderr logger
-bin/               # vgi-starter-worker (what DuckDB launches) and run-recipe
-tests/             # bun unit tests (worker subprocess + mock API)
-test/sql/          # sqllogictest files run through DuckDB
-test/mock_api/     # offline mock of the REST API used by tests
-examples/          # recipes: pushdown, caching, catalog tables, aggregates, COPY …
-ci/                # integration harness used by `make test-sql` and CI
-scripts/           # vgi_template.py (init / template-diff)
-vgi-agent-tests.yaml  # private graders for the agent test tasks
+```sh
+make check             # Biome, tsc, Bun tests, Haybarn SQL over stdio/launch/HTTP, metadata
+make verify-stock      # Offline API fixtures through stock DuckDB 2.0.0 + signed Query Farm VGI
+make verify-taxonomy   # Live comparison with eBird's public pinned taxonomy endpoint
+make test-live         # Real eBird API smoke queries; requires EBIRD_API_KEY
+make test-migration-sample # Real public GeoPackage/GeoTIFF products + DuckDB Spatial, no key
 ```
 
-## Adding a function
+`make check` uses Haybarn 2.0.0rc11; it is not the stock DuckDB check.
+Metadata execution covers the offline species example. Live API examples are
+non-executable documentation, so no key is required for deterministic checks.
+`make test-live` fails clearly without a configured key and allows legitimately
+empty sightings: it verifies successful API retrieval/parsing, not bird presence.
+See [VERIFICATION.md](VERIFICATION.md) for recorded results and limitations.
 
-1. Create `src/<name>.ts`. Copy the closest example: `greet.ts` for a scalar,
-   `sequence.ts` for a generator, `fetch_items.ts` for an API.
-2. Declare arguments: `params` + `argDocs` (scalars), or the ordered `parameters`
-   list when a constant needs `choices`/`ge`/`le`. Table functions use `args`,
-   `argDocs` and `argConstraints`; an argument listed in `argDefaults` becomes a
-   named argument (`step := 2`), the others are positional.
-3. Give it `description`, `tags: objectTags(...)` (from `src/meta.ts`) and
-   `examples`.
-4. Add it to `FUNCTIONS` in `src/catalog.ts`.
+The portable [vgi-worker.json](vgi-worker.json) contract can also be run with the
+vgi-worker skill's verifier inside `scripts/with_fixtures.py`. That wrapper starts
+an isolated fixture server, sets its endpoint and public fake key, and cleans up.
+Operator/test overrides are `DUCKS_EBIRD_BASE_URL` (default
+`https://api.ebird.org/v2`), `DUCKS_STATUS_BASE_URL` (default
+`https://st-download.ebird.org/v1`) and `DUCKS_STATUS_SAMPLE_BASE_URL` (the pinned
+public example-data directory). None is accepted as a SQL argument. Live checks
+clear all three overrides so they cannot accidentally use fixture responses.
 
-**Which kind of function?**
+The source launcher supports stdio, `launch:` Unix sockets and HTTP:
 
-| You want to… | Use |
-|---|---|
-| compute one value per input row | a **scalar** function |
-| return a set of rows from arguments (an API, a file, a generator) | a **table** function |
-| transform or aggregate the rows of a query | a **table in-out** function or an **aggregate** |
-| expose a fixed dataset by name (`SELECT * FROM starter.main.t`) | a **catalog table** |
-| write data out to a file or service | `COPY … TO` with a copy function |
-| accept `INSERT` / `UPDATE` / `DELETE` | a catalog table with insert/update/delete functions |
-
-The [examples/](examples/) folder has a recipe for most of these. Writable tables have no
-recipe:
-
-A writable table is a `TableDescriptor` that names a table in-out function per operation in
-`insertFunction`, `updateFunction` and `deleteFunction`, with the richest result each one
-produces in `writeResultModes`. `writeOptions`, `writeResultSchema`, `writeResultBatch` and
-`rowIdField` (all exported by `@query-farm/vgi`) read DuckDB's `write_options` argument and
-build the result. UPDATE and DELETE need the table's scan `function` to emit `rowIdField()` and
-support projection pushdown. Transactions: return `supports_transactions` from the catalog's
-attach and override `transactionBegin` / `transactionCommit` / `transactionRollback`.
-Since VGI protocol 3.3 a table's scan and write functions are table-only: hidden from
-`duckdb_functions()` and not callable from SQL. Set `exposeScan: true` on the table to keep the
-scan callable as an ordinary table function too (write functions never are).
-[`examples/simple-writable-worker.ts`](https://github.com/Query-farm/vgi-typescript/blob/main/examples/simple-writable-worker.ts)
-and `examples/writable-tx-worker.ts` in vgi-typescript are complete workers.
-
-## Secrets and configuration
-
-`fetch_items` shows the recommended pattern. A bearer token comes from a DuckDB secret
-when one exists, and from an environment variable otherwise:
-
-```sql
-CREATE SECRET (TYPE starter_api, TOKEN 'your-token');      -- per session, never logged
+```sh
+bin/vgi-ducks-worker --http --host 127.0.0.1 --port 8000
+# GET /health
+bun build src/worker.ts --compile --outfile dist/vgi-ducks-worker
 ```
 
-```bash
-STARTER_API_TOKEN=your-token make run-http                # for servers and containers
-```
+The compiled executable embeds the species JSON and needs no Bun installation.
+The Dockerfile includes the catalog data. Starter recipes and their SQL tests
+remain under `examples/` for future extension.
 
-Try it: the demo API's `/v1/auth` endpoint needs the published token `demo-token`.
+## Sources and license
 
-```sql
-SELECT count(*) FROM starter.main.fetch_items('https://vgi-starter-api.query-farm.services/v1/auth');   -- fails: HTTP 401
-CREATE SECRET (TYPE starter_api, TOKEN 'demo-token');
-SELECT count(*) FROM starter.main.fetch_items('https://vgi-starter-api.query-farm.services/v1/auth');   -- 25
-```
+Observation and taxonomy data are from the Cornell Lab of Ornithology's
+[eBird](https://ebird.org). Consult the [API documentation](https://documenter.getpostman.com/view/664302/S1ENwy59),
+[data access guide](https://support.ebird.org/en/support/solutions/articles/48000838205-download-ebird-data),
+[citation guidance](https://science.ebird.org/en/use-ebird-data/citation),
+and [API terms](https://www.birds.cornell.edu/home/ebird-api-terms-of-use/).
+Use your own key and follow upstream data terms. The API terms permit noncommercial
+use; commercial use requires prior written permission from Cornell. The worker's [0BSD license](LICENSE)
+covers its code; it does not relicense eBird data.
 
-Never bake credentials into the image or the source. If a function can't run without
-real credentials, its examples can't execute in CI either. Set `execute: false` on the
-metadata check for that worker (see `.github/workflows/ci.yml`), and add
-`LINT_ARGS ?= --no-execute` to the Makefile so local runs match.
+Migration products use the separate [Status and Trends file API](https://ebird.github.io/ebirdst/articles/api.html).
+Follow its access, attribution and data-use terms when requesting a key or
+redistributing derived results. The worker does not bundle the public sample or
+authenticated Status datasets.
 
-## Testing
-
-```bash
-make test-unit                 # fast TypeScript unit tests
-make test-sql                  # test/sql/*.test through DuckDB (stdio)
-make test-sql TRANSPORT=http   # …over HTTP (also: launch)
-make check                     # everything CI runs
-```
-
-`test/sql/*.test` files are [sqllogictest](https://duckdb.org/docs/stable/dev/sqllogictest/intro)
-scripts. `ci/run-integration.sh` runs them against your worker and fails on any
-unexpected skip, so a broken transport can't hide behind a green run.
-`fetch_items` is tested against `test/mock_api/server.py` so tests are fast and
-offline.
-
-**Testing against real data:** put live tests in their own `.test` file that starts with
-`require-env STARTER_LIVE`. They run only when that variable is set. Add the skip reason
-to `EXPECTED_SKIP_REASONS` in CI.
-
-## Metadata and the quality score
-
-DuckDB, agents and documentation tools discover your functions through their metadata:
-titles, descriptions, argument docs, examples and keywords.
-[vgi-lint](https://github.com/Query-farm/vgi-lint-check) checks it, and CI runs it on
-every push. Its settings live in `vgi-lint.toml`, which `make lint-explain`,
-`vgi-lint lint`, and CI all read. This template scores 100/100 with no findings.
-
-```bash
-make lint-explain                              # findings, each with its fix
-make lint-explain LINT_ARGS="--format agent"   # the same, grouped for coding agents
-make lint-ai                                   # optional: an agent must solve vgi-agent-tests.yaml
-```
-
-Each report also states an **assurance level**: how much was actually verified.
-
-| Level | Reached when | Here |
-|---|---|---|
-| L1 structural | the static metadata is clean | workers that need real credentials (`execute: false` in CI) |
-| L2 behavioural | the examples also run and return what they claim | **the CI gate** |
-| L3 semantic | an agent solves the worker's own test tasks, and the docs are reviewed | `make lint-ai`, before publishing |
-
-- **How strict.** Your copy fails on warnings (`fail_on = "warning"` in `vgi-lint.toml`).
-  Raise it to `"info"` before you publish the worker for others.
-- **The linter isn't pinned.** It tracks the current quality bar, so a new rule can flag
-  metadata that passed yesterday. Fix it, or waive the finding.
-- **Waivers.** If a finding is genuinely wrong for your worker, waive it in
-  `vgi-lint.toml` with a `kind` and a `reason`.
-- **Existing workers.** If you're adding this gate to a worker that already has
-  findings, record them with `vgi-lint lint --baseline vgi-lint-baseline --update-baseline`
-  and set `baseline` in `vgi-lint.toml`. After that, only new findings fail.
-
-Metadata lives in `src/meta.ts` and the `tags`/`examples` of each function.
-
-## Logging and debugging
-
-stdout carries the Arrow protocol, so **never print to stdout**. Log to stderr instead.
-Use `log` from `src/log.ts` (it writes to stderr); `--debug` or `--log-level debug` turns it up and also enables the SDK's own tracing (`VGI_DEBUG`).
-
-- Under DuckDB (stdio/launch), worker stderr shows up in DuckDB's error messages and
-  terminal.
-- In Docker it goes to `docker logs`.
-- `make debug` runs one query against the worker with debug logging on.
-
-## Deploying
-
-The same binary serves stdio (DuckDB starts it locally) or HTTP (you host it):
-
-```bash
-docker build -t weather-worker .
-docker run -p 8000:8000 -e STARTER_API_TOKEN=... weather-worker   # health: GET /health
-```
-
-```sql
-ATTACH 'starter' (TYPE vgi, LOCATION 'https://workers.example.com/starter');
-```
-
-Put hosted workers behind TLS and authentication. See
-[authentication](https://query.farm/vgi/authentication) for bearer tokens and JWTs, and
-[distributing a worker](https://query.farm/vgi/distributing-a-worker) for packaging.
-Pass secrets with `-e` or your platform's secret manager.
-
-## Releasing
-
-Push a tag like `v0.1.0`. The release workflow compiles the worker with `bun build --compile` into a standalone executable for Linux (x86-64, arm64), macOS (arm64) and Windows (x86-64), and attaches the archives to the GitHub release. Users download one file and point `LOCATION` at it, with no Bun or `node_modules` on the host. Every artifact is signed with cosign and
-carries SLSA build provenance. `ci/check-version.sh` makes sure the tag matches the
-version in `package.json`.
-
-## Using with coding agents
-
-[AGENTS.md](AGENTS.md) is written for AI coding agents (Claude Code reads it via
-`CLAUDE.md`; Codex, Cursor and others read it directly). It covers the commands, the
-recipe for adding a function, the metadata checklist and the sharp edges. A good first
-prompt:
-
-> Read AGENTS.md. Replace `fetch_items` with `forecast(lat DOUBLE, lon DOUBLE)` that calls
-> the Open-Meteo API. Include full metadata, a mock-server test and a `STARTER_LIVE` test.
-> You're done when `make check` passes.
-
-## Keeping up with the template
-
-`make template-diff` shows what changed upstream (CI, docs, examples) since your copy was
-made. Your copy records its template version in `.vgi-starter.json`.
-
-## Learn more
-
-- [What is VGI?](https://query.farm/vgi) · [Getting started](https://query.farm/vgi/getting-started) · [Building a worker](https://query.farm/vgi/building-a-worker)
-- [TypeScript SDK docs](https://query.farm/vgi/docs/typescript/): [scalar tutorial](https://query.farm/vgi/docs/typescript/tutorial/scalar/), [table tutorial](https://query.farm/vgi/docs/typescript/tutorial/table/)
-- [Distributing a worker](https://query.farm/vgi/distributing-a-worker) · [Choosing a language](https://query.farm/vgi/languages) · [llms.txt](https://query.farm/vgi/llms.txt)
-- SDK source: [@query-farm/vgi](https://github.com/Query-farm/vgi-typescript) · RPC layer: [https://vgi-rpc-typescript.query.farm](https://vgi-rpc-typescript.query.farm)
+Generated from `Query-farm/vgi-starter-typescript` 1.3.0,
+commit `145aedcb87ed8fadde6dfb8a26197d0d68112369`. Resolved dependencies:
+`@query-farm/vgi` 0.50.0, `@query-farm/vgi-rpc` 0.29.7,
+`@query-farm/apache-arrow` 21.1.1. Preserve the lockfile and SDK minor-version pin.
+Use `make template-diff` to review starter updates.
 
 ## Support
 
-Open an issue on this repository. For VGI itself, see [query.farm](https://query.farm).
-
-## Authorship & license
-
-The starter template is written by [Query.Farm](https://query.farm) and released under
-the [BSD Zero Clause License](LICENSE) (0BSD). Use it for anything, with no attribution
-required. Replace this section with your own license once the code is yours.
+Report worker issues in [Query-farm/vgi-ducks](https://github.com/Query-farm/vgi-ducks/issues).
+Include the worker version, DuckDB version and a reproducible query with credentials
+removed. For VGI protocol/SDK documentation, see [query.farm/vgi](https://query.farm/vgi).

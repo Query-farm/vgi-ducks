@@ -1,16 +1,14 @@
-# Private graders for the public vgi.agent_test_tasks in the worker's catalog metadata.
-# `vgi-lint lint --ai` runs an agent on each prompt and grades it with check_sql.
-# See https://github.com/Query-farm/vgi-lint-check (VGI920).
+# API tasks require EBIRD_API_KEY when running the optional L3 agent check.
 tasks:
-  - name: formal_greeting
-    reference_sql: SELECT starter.main.greet('Grace', 'formal') AS greeting
-  - name: sum_of_squares
-    reference_sql: SELECT sum(squared) AS total FROM starter.main.sequence_table(10)
-  - name: stepped_sequence
-    reference_sql: SELECT n FROM starter.main.sequence_table(4, step := 5) ORDER BY n
-  # Reads the public demo API (https://vgi-starter-api.query-farm.services/v1).
-  - name: items_per_category
-    check_sql: >-
-      SELECT count(*) = 3 AND sum(items) = 25
-      FROM (SELECT category, count(*) AS items
-            FROM starter.main.fetch_items('https://vgi-starter-api.query-farm.services/v1') GROUP BY category)
+  - name: mallard_code
+    reference_sql: SELECT species_code, scientific_name FROM ducks.main.species WHERE common_name = 'Mallard' ORDER BY species_code
+  - name: nearby_ducks
+    reference_sql: SELECT common_name, observed_at_local FROM ducks.main.recent_sightings(42.36, -71.06) ORDER BY common_name
+  - name: birding_hotspots
+    reference_sql: SELECT location_name, distance_km FROM ducks.main.nearby_hotspots(42.36, -71.06) ORDER BY distance_km, location_name LIMIT 5
+  - name: seasonal_ranges
+    reference_sql: SELECT season, start_date, end_date, wraps_year FROM ducks.main.seasonal_ranges('yebsap-example') ORDER BY season
+  - name: weekly_abundance
+    reference_sql: SELECT week_date, mean_relative_abundance, coverage_fraction FROM ducks.main.weekly_abundance('yebsap-example', 'POLYGON((-90 41,-82 41,-82 49,-90 49,-90 41))') ORDER BY week_date
+  - name: migration_calendar
+    reference_sql: SELECT week_date, mean_relative_abundance, coverage_fraction FROM ducks.main.migration_calendar('yebsap-example', 'POLYGON((-90 41,-82 41,-82 49,-90 49,-90 41))') ORDER BY week_date

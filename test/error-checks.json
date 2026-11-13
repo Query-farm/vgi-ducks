@@ -1,0 +1,112 @@
+[
+  {
+    "name": "NULL positional",
+    "sql": "SELECT * FROM ducks.main.recent_sightings(NULL,0)",
+    "error": "NULL"
+  },
+  {
+    "name": "NULL optional",
+    "sql": "SELECT * FROM ducks.main.recent_sightings(42,-71,days_back := NULL)",
+    "error": "NULL"
+  },
+  {
+    "name": "NULL hotspot radius",
+    "sql": "SELECT * FROM ducks.main.nearby_hotspots(42,-71,radius_km := NULL)",
+    "error": "NULL"
+  },
+  {
+    "name": "latitude range",
+    "sql": "SELECT * FROM ducks.main.recent_sightings(91,0)",
+    "error": ".*"
+  },
+  {
+    "name": "NaN latitude",
+    "sql": "SELECT * FROM ducks.main.recent_sightings('nan'::DOUBLE,0)",
+    "error": ".*"
+  },
+  {
+    "name": "radius range",
+    "sql": "SELECT * FROM ducks.main.nearby_hotspots(42,-71,radius_km := 51)",
+    "error": ".*"
+  },
+  {
+    "name": "lookback range",
+    "sql": "SELECT * FROM ducks.main.recent_sightings(42,-71,days_back := 31)",
+    "error": ".*"
+  },
+  {
+    "name": "non-duck code",
+    "sql": "SELECT * FROM ducks.main.recent_sightings(42,-71,species_code := 'cangoo')",
+    "error": "species_code"
+  },
+  {
+    "name": "extinct code",
+    "sql": "SELECT * FROM ducks.main.recent_sightings(42,-71,species_code := 'labduc')",
+    "error": "extinct"
+  },
+  {
+    "name": "malformed JSON shape",
+    "sql": "SELECT * FROM ducks.main.recent_sightings(-89,0)",
+    "error": "expected an array"
+  },
+  {
+    "name": "upstream forbidden",
+    "sql": "SELECT * FROM ducks.main.recent_sightings(-87,0)",
+    "error": "HTTP 403"
+  },
+  {
+    "name": "retry exhaustion",
+    "sql": "SELECT * FROM ducks.main.recent_sightings(-88,0)",
+    "error": "HTTP 503"
+  },
+  {
+    "name": "truncated response",
+    "sql": "SELECT * FROM ducks.main.recent_sightings(-86,0)",
+    "error": "10000-record limit"
+  },
+  {
+    "name": "invalid count",
+    "sql": "SELECT * FROM ducks.main.recent_sightings(-85,0)",
+    "error": "reported count"
+  },
+  {
+    "name": "unknown model product",
+    "sql": "SELECT * FROM ducks.main.seasonal_ranges('wooduc')",
+    "error": "product unavailable"
+  },
+  {
+    "name": "NULL region",
+    "sql": "SELECT * FROM ducks.main.weekly_abundance('mallar3',NULL)",
+    "error": "NULL"
+  },
+  {
+    "name": "invalid region shape",
+    "sql": "SELECT * FROM ducks.main.weekly_abundance('mallar3','POINT(0 0)')",
+    "error": "POLYGON"
+  },
+  {
+    "name": "invalid crossed polygon",
+    "sql": "SELECT * FROM ducks.main.weekly_abundance('mallar3','POLYGON((0 0,2 2,0 2,2 0,0 0))')",
+    "error": "non-self-intersecting"
+  },
+  {
+    "name": "dateline polygon",
+    "sql": "SELECT * FROM ducks.main.weekly_abundance('mallar3','POLYGON((-179 0,179 0,179 1,-179 1,-179 0))')",
+    "error": "antimeridian"
+  },
+  {
+    "name": "path traversal species",
+    "sql": "SELECT * FROM ducks.main.seasonal_ranges('../mallar3')",
+    "error": "species_code"
+  },
+  {
+    "name": "sample unsupported resolution",
+    "sql": "SELECT * FROM ducks.main.seasonal_ranges('yebsap-example',resolution := '9km')",
+    "error": "sample"
+  },
+  {
+    "name": "NULL year",
+    "sql": "SELECT * FROM ducks.main.seasonal_ranges('mallar3',data_year := NULL)",
+    "error": "NULL"
+  }
+]

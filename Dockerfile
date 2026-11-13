@@ -6,9 +6,9 @@ FROM oven/bun:1.3-slim
 
 ARG VERSION=0.0.0
 ARG GIT_COMMIT=unknown
-LABEL org.opencontainers.image.title="vgi-starter-worker" \
+LABEL org.opencontainers.image.title="vgi-ducks-worker" \
       org.opencontainers.image.description="A VGI worker for DuckDB" \
-      org.opencontainers.image.source="https://github.com/Query-farm/vgi-starter-typescript" \
+      org.opencontainers.image.source="https://github.com/Query-farm/vgi-ducks" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${GIT_COMMIT}" \
       org.opencontainers.image.licenses="0BSD"
@@ -20,6 +20,7 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 COPY tsconfig.json README.md LICENSE ./
 COPY src ./src
+COPY data ./data
 COPY bin ./bin
 
 # Run as an unprivileged user (the base image ships `bun`, uid 1000).

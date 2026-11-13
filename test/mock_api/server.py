@@ -1,127 +1,115 @@
 #!/usr/bin/env python3
-# managed-by: vgi-starters (edit upstream in shared/, then run tools/render.py)
-"""A tiny, dependency-free paginated JSON API used by the tests.
-
-``fetch_items`` (the example REST table function) is tested against this
-server, so the suite stays deterministic and runs offline.
-
-Endpoints
----------
-``GET /items?page=<n>&page_size=<m>``
-    Returns ``{"items": [...], "next_page": <n+1 or null>}`` over a fixed set
-    of 25 items.
-``GET /health``
-    Returns ``{"status": "ok"}``.
-
-Behaviour switches
-------------------
-* ``MOCK_API_TOKEN`` env var: if set, every ``/items`` request must send
-  ``Authorization: Bearer <token>`` or it gets a 401.
-* ``MOCK_API_FLAKY=1`` env var (or ``?flaky=1``): the first request for each
-  page returns ``429`` with ``Retry-After: 0``, exercising the client's retry
-  path.
-
-Usage::
-
-    python3 test/mock_api/server.py            # prints PORT:<n> once listening
-    python3 test/mock_api/server.py --port 8765
+"""Offline eBird contract fixture. Requires the public fake key fixture-token.
+Validates the actual request path, header and parameters; never proxies to eBird.
 """
-
-from __future__ import annotations
-
 import argparse
-import contextlib
+import copy
 import json
 import os
-import sys
-import threading
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
+import threading
 
-CATEGORIES = ("hardware", "software", "service")
-
-ITEMS = [
-    {
-        "id": i,
-        "name": f"item-{i:02d}",
-        "category": CATEGORIES[i % 3],
-        "price": round(1.5 * i, 2),
-    }
-    for i in range(1, 26)
-]
-
-_flaky_seen: set[tuple[int, int]] = set()
-_flaky_lock = threading.Lock()
-
+FIXTURES = Path(__file__).resolve().parents[1] / 'fixtures'
+SIGHTINGS = json.loads((FIXTURES / 'sightings.json').read_text())
+HOTSPOTS = json.loads((FIXTURES / 'hotspots.json').read_text())
+SEEN = set()
+LOCK = threading.Lock()
 
 class Handler(BaseHTTPRequestHandler):
-    """Serve ``/items`` pages and ``/health``."""
+    def log_message(self, *_args):
+        pass
 
-    def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - stdlib signature
-        """Log to stderr only, so stdout carries nothing except the ``PORT:`` line."""
-        sys.stderr.write("mock_api: " + (format % args) + "\n")
-
-    def _send(self, status: int, body: object, headers: dict[str, str] | None = None) -> None:
+    def send(self, status, body, headers=None):
         payload = json.dumps(body).encode()
         self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(payload)))
-        for key, value in (headers or {}).items():
-            self.send_header(key, value)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(payload)))
+        for k,v in (headers or {}).items(): self.send_header(k,v)
         self.end_headers()
         self.wfile.write(payload)
 
-    def do_GET(self) -> None:
-        """Handle GET requests."""
+    def do_GET(self):
         url = urlparse(self.path)
-        if url.path == "/health":
-            self._send(200, {"status": "ok"})
-            return
-        if url.path != "/items":
-            self._send(404, {"error": "not found"})
-            return
-
-        token = os.environ.get("MOCK_API_TOKEN")
-        if token and self.headers.get("Authorization") != f"Bearer {token}":
-            self._send(401, {"error": "missing or invalid bearer token"})
-            return
-
-        query = parse_qs(url.query)
+        if url.path == '/health':
+            self.send(200, {'status':'ok'}); return
+        if url.path.startswith('/status/'):
+            self.status_get(url); return
+        if self.headers.get('X-eBirdApiToken') != 'fixture-token':
+            self.send(401, {'error':'invalid key'}); return
+        q = {k:v[0] for k,v in parse_qs(url.query).items()}
         try:
-            page = int(query.get("page", ["1"])[0])
-            page_size = int(query.get("page_size", ["10"])[0])
-        except ValueError:
-            self._send(400, {"error": "page and page_size must be integers"})
-            return
-        if page < 1 or not 1 <= page_size <= 1000:
-            self._send(400, {"error": "page must be >= 1 and page_size in [1, 1000]"})
-            return
+            lat = float(q['lat']); lon = float(q['lng']); dist = float(q['dist'])
+            assert -90 <= lat <= 90 and -180 <= lon <= 180 and 0 <= dist <= 50
+            assert q.get('fmt') == 'json'
+            if 'back' in q: assert 1 <= int(q['back']) <= 30
+            if url.path.startswith('/v2/data/obs/geo/recent'):
+                assert q['maxResults'] == '10000' and q['sppLocale'] == 'en'
+                assert q['hotspot'] in ('true','false') and q['includeProvisional'] in ('true','false')
+                assert 'back' in q
+                if url.path == '/v2/data/obs/geo/recent': assert q['cat'] == 'species' and q['sort'] == 'date'
+                else: assert 'cat' not in q and 'sort' not in q
+            else: assert url.path == '/v2/ref/hotspot/geo'
+        except (AssertionError, KeyError, ValueError):
+            self.send(400, {'error':'invalid request parameters'}); return
+        if lat == -87: self.send(403, {'error':'forbidden'}); return
+        if lat == -88: self.send(503, {'error':'unavailable'}, {'Retry-After':'0'}); return
+        if os.environ.get('MOCK_API_FLAKY') == '1':
+            with LOCK:
+                if self.path not in SEEN:
+                    SEEN.add(self.path)
+                    self.send(429, {'error':'rate limit'}, {'Retry-After':'0'}); return
+        if lat == -90: self.send(200, []); return
+        if lat == -89: self.send(200, {'unexpected':'not an array'}); return
+        if lat == -86: self.send(200, [SIGHTINGS[0]] * 10000); return
+        if url.path == '/v2/ref/hotspot/geo':
+            result = copy.deepcopy(HOTSPOTS)
+            if 'back' in q: result = [x for x in result if 'latestObsDt' in x]
+        elif url.path == '/v2/data/obs/geo/recent':
+            result = copy.deepcopy(SIGHTINGS)
+        else:
+            code = url.path.rsplit('/',1)[-1]
+            result = [copy.deepcopy(x) for x in SIGHTINGS if x['speciesCode'] == code]
+            if code == 'mallar3':
+                second = {**result[0], 'locId':'L102','locName':'Fixture Marsh (Restricted Access)', 'howMany':0, 'obsDt':'2026-11-12 09:00', 'lat':42.38,'lng':-71.08}
+                for k in ['obsValid','obsReviewed','locationPrivate','subId']: second.pop(k)
+                result.append(second)
+        if q.get('hotspot') == 'true': result = [x for x in result if not x.get('locationPrivate')]
+        if lat == -85 and result: result[0]['howMany'] = 'many'
+        self.send(200, result)
 
-        if os.environ.get("MOCK_API_FLAKY") == "1" or query.get("flaky", ["0"])[0] == "1":
-            with _flaky_lock:
-                key = (page, page_size)
-                if key not in _flaky_seen:
-                    _flaky_seen.add(key)
-                    self._send(429, {"error": "slow down"}, {"Retry-After": "0"})
-                    return
+    def status_get(self, url):
+        q = {k:v[0] for k,v in parse_qs(url.query).items()}
+        if q.get('key') != 'status-fixture-token':
+            self.send(401, {'error':'invalid Status key'}); return
+        if os.environ.get('MOCK_API_FLAKY') == '1':
+            with LOCK:
+                if self.path not in SEEN:
+                    SEEN.add(self.path)
+                    self.send(429, {'error':'rate limit'}, {'Retry-After':'0'}); return
+        root = '2023/mallar3/'
+        objects = {
+            root+'ranges/mallar3_range_smooth_27km_2023.gpkg':'migration.gpkg',
+            root+'weekly/mallar3_abundance_median_27km_2023.tif':'migration.tif',
+            root+'weekly/band-dates.csv':'band-dates.csv',
+        }
+        if url.path == '/status/list-obj/2023/mallar3':
+            self.send(200,list(objects)); return
+        if url.path == '/status/list-obj/2023/wooduc':
+            self.send(200,[]); return
+        if url.path == '/status/fetch' and q.get('objKey') in objects:
+            payload = (FIXTURES/objects[q['objKey']]).read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type','application/octet-stream')
+            self.send_header('Content-Length',str(len(payload)))
+            self.end_headers(); self.wfile.write(payload); return
+        self.send(404, {'error':'unavailable fixture product'})
 
-        start = (page - 1) * page_size
-        chunk = ITEMS[start : start + page_size]
-        next_page = page + 1 if start + page_size < len(ITEMS) else None
-        self._send(200, {"items": chunk, "next_page": next_page})
-
-
-def main() -> None:
-    """Start the server and print ``PORT:<n>`` once it is listening."""
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=0)
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--port',type=int,default=0)
     args = parser.parse_args()
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
-    print(f"PORT:{server.server_address[1]}", flush=True)
-    with contextlib.suppress(KeyboardInterrupt):
-        server.serve_forever()
-
-
-if __name__ == "__main__":
-    main()
+    server = ThreadingHTTPServer(('127.0.0.1',args.port),Handler)
+    print(f'PORT:{server.server_address[1]}',flush=True)
+    server.serve_forever()

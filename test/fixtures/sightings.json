@@ -1,0 +1,7 @@
+[
+  {"speciesCode":"mallar3","comName":"Mallard","sciName":"Anas platyrhynchos","locId":"L100","locName":"Fixture Harbor","obsDt":"2026-11-12 08:15","howMany":7,"lat":42.36,"lng":-71.06,"obsValid":true,"obsReviewed":false,"locationPrivate":false,"subId":"S100"},
+  {"speciesCode":"wooduc","comName":"Wood Duck","sciName":"Aix sponsa","locId":"L101","locName":"Fixture Pond","obsDt":"2026-11-11","lat":42.37,"lng":-71.05,"obsValid":true,"obsReviewed":true,"locationPrivate":true,"subId":"S101"},
+  {"speciesCode":"cangoo","comName":"Canada Goose","sciName":"Branta canadensis","locId":"L100","locName":"Fixture Harbor","obsDt":"2026-11-12 08:15","howMany":20,"lat":42.36,"lng":-71.06,"obsValid":true,"obsReviewed":false,"locationPrivate":false},
+  {"speciesCode":"amerob","comName":"American Robin","sciName":"Turdus migratorius","locId":"L100","locName":"Fixture Harbor","obsDt":"2026-11-12 08:15","howMany":2,"lat":42.36,"lng":-71.06},
+  {"speciesCode":"mallar2","comName":"Mallard (Domestic type)","sciName":"Anas platyrhynchos (Domestic type)","locId":"L100","locName":"Fixture Harbor","obsDt":"2026-11-12 08:15","howMany":1,"lat":42.36,"lng":-71.06}
+]

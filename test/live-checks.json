@@ -1,0 +1,29 @@
+[
+  {
+    "name": "live latest-per-species query",
+    "sql": "SELECT (count(*) >= 0)::INTEGER FROM ducks.main.recent_sightings(42.36,-71.06)",
+    "rows": [
+      [
+        1
+      ]
+    ]
+  },
+  {
+    "name": "live species-specific query",
+    "sql": "SELECT (count(*) >= 0)::INTEGER FROM ducks.main.recent_sightings(42.36,-71.06,species_code := 'mallar3')",
+    "rows": [
+      [
+        1
+      ]
+    ]
+  },
+  {
+    "name": "live nearby hotspot query",
+    "sql": "SELECT (count(*) >= 0)::INTEGER FROM ducks.main.nearby_hotspots(42.36,-71.06)",
+    "rows": [
+      [
+        1
+      ]
+    ]
+  }
+]
