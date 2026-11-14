@@ -381,3 +381,7 @@ Use `make template-diff` to review starter updates.
 Report worker issues in [Query-farm/vgi-ducks](https://github.com/Query-farm/vgi-ducks/issues).
 Include the worker version, DuckDB version and a reproducible query with credentials
 removed. For VGI protocol/SDK documentation, see [query.farm/vgi](https://query.farm/vgi).
+
+## Portable public-sample notebook
+
+[Region, coverage and modeled peak weeks](notebooks/README.md) runs without an access key using Cornell’s Michigan Yellow-bellied Sapsucker sample. The existing Virginia duck analysis remains available and requires its separately documented credentials to rerun.
