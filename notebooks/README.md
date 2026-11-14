@@ -3,7 +3,7 @@
 | Example | Data and requirements | Execution |
 | --- | --- | --- |
 | [Public sample: region and coverage](01_public_sample_region_and_coverage.ipynb) | Cornell's public **Yellow-bellied Sapsucker in Michigan** sample; 2023 model, 27 km grid; no key | Portable Haybarn notebook; commands below |
-| [Ducks in Virginia — reader](spatial-migration.ipynb), [complete source](virginia-ducks.source.ipynb) | Existing three-duck analysis, observation records, Overture maps and credited photographs | Viewing saved outputs needs no key. Regeneration requires your own `EBIRDST_KEY`, the original root `make notebook` workflow and its Overture checkout. This credential-dependent notebook has been preserved unchanged. |
+| [Ducks in Virginia — reader](spatial-migration.ipynb), [complete source](virginia-ducks.source.ipynb) | Existing three-duck analysis, observation records, Overture maps and credited photographs | Viewing saved outputs needs no key. Regeneration requires your own `EBIRDST_KEY`, the original root `make notebook` workflow and its Overture checkout. Its analysis and saved reader outputs are preserved; its source now isolates SQL secret storage as described below. |
 
 The public sample is a distinct supported example, not a substitute for the Virginia duck results. It asks when a selected region's modeled abundance peaks and how its grid coverage affects the denominator. One chart maps seasonal ranges and the selected window; the other compares the valid modeled-cell mean with an explicitly incorrect NoData-to-zero shortcut, alongside coverage. Changing the western boundary from −90 to −86 degrees is the focused experiment.
 
@@ -44,3 +44,20 @@ The worker selects native grid-cell centers strictly within the WGS84 region and
 Positive peak weeks are validated as a set, retaining ties. The `migration_calendar` comparison uses the same underlying product, so it verifies reconstruction rather than independently validating the model. Changing the region changes the population of cells being summarized; it is not a causal experiment, a population census or a migration arrival estimate.
 
 The existing Virginia notebook, helper, requirements and photographs retain their original workflow and licenses. See [STANDARD.md](STANDARD.md) for the new public example's presentation rules.
+
+## SQL credential isolation
+
+Each public notebook creates Haybarn with a fresh temporary `secret_directory`
+and `allow_persistent_secrets=False` before attaching workers. It fully drains
+and verifies an empty SQL secret inventory before retrieval and again at cleanup.
+These public examples create no SQL credentials. Cleanup closes the connection
+and removes its temporary directory. Existing saved SQL secrets are neither
+read, modified nor deleted; anonymous/source configuration remains explicit.
+
+The legacy `virginia-ducks.source.ipynb` keeps its existing pinned DuckDB/SQLAlchemy
+workflow and explicit `EBIRDST_KEY` / optional `EBIRD_API_KEY` requirements. Its
+connection also uses fresh temporary secret storage with persistent secrets disabled
+and asserts an empty initial inventory, so saved SQL secrets cannot override those
+explicit environment inputs. The connection configuration was smoke-tested without
+credentials or worker calls; the credential-dependent full source was not rerun.
+The saved reader `spatial-migration.ipynb` and its analytical outputs remain unchanged.
