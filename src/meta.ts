@@ -13,7 +13,7 @@
 import { field, type VgiDataType, type VgiField } from "@query-farm/vgi";
 
 export const CATALOG_NAME = "ducks";
-export const VERSION = "0.1.2";
+export const VERSION = "0.1.3";
 
 export const SOURCE_URL = "https://github.com/Query-farm/vgi-ducks";
 
@@ -87,7 +87,16 @@ export const CATALOG_DOC_MD =
   "\n\nData are supplied by the Cornell Lab of Ornithology's [eBird](https://ebird.org). " +
   "The worker preserves source identifiers and review flags. A missing count is SQL NULL. " +
   "Species-level records only: hybrids, domestic forms and unidentified groups are excluded. " +
-  "Use SQL joins with weather and tide workers to explore conditions at sighting locations.";
+  "Use SQL joins with weather and tide workers to explore conditions at sighting locations.\n\n" +
+  "## Sources and references\n\n" +
+  "- [eBird API 2.0 documentation](https://documenter.getpostman.com/view/664302/S1ENwy59): the " +
+  "API behind the sightings and hotspots functions; [request an eBird API key](https://ebird.org/api/keygen).\n" +
+  "- [eBird Status and Trends](https://science.ebird.org/en/status-and-trends): the modeled " +
+  "ranges, abundance and migration data; [request Status and Trends data access](https://ebird.org/st/request) " +
+  "for the ebirdst key.";
+/** The schema's one-line comment; the richer Markdown lives in `SCHEMA_DOC_MD` (VGI102). */
+export const SCHEMA_COMMENT =
+  "Duck species reference table, eBird sightings and hotspots, and Status and Trends ranges and abundance.";
 export const SCHEMA_DOC_LLM =
   CATALOG_DOC_LLM +
   " Query ducks.main.species to find codes and common/scientific names. The table includes extinct " +

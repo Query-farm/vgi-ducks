@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3
+
+- Docs link to upstream sources: the catalog docs now link the eBird API 2.0 documentation, the
+  eBird API key page, eBird Status and Trends and its data-access request page (vgi-lint VGI183).
+- The `main` schema comment is now a one-line summary; its Markdown docs no longer repeat it
+  (vgi-lint VGI102).
+
 ## 0.1.2
 
 - The catalog comment is now one plain paragraph (vgi-lint VGI107) describing what the worker covers;
