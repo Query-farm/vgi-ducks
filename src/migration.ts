@@ -266,7 +266,7 @@ const STATUS_DOCS = {
 };
 const STATUS_CONSTRAINTS = { data_year: { ge: 2022, le: 2100 }, resolution: { choices: ["27km", "9km", "3km"] } };
 const SHARED_DOCS =
-  "Uses the eBird Status and Trends file API with a separate ebirdst TOKEN secret or EBIRDST_KEY. yebsap-example reads Cornell's public Yellow-bellied Sapsucker sample without credentials, only for 2023/27km. Model-release species codes are not silently mapped to the offline 2026 taxonomy. data_year is explicit and defaults to 2023; unavailable products fail clearly. Responses are bounded to 128 MiB and all NULL arguments are rejected. These are modeled seasonal distributions, not individual migration tracks or live forecasts. Access/data terms apply. No key, signed URL or downloaded file is retained in table state.";
+  "Uses the eBird Status and Trends file API with a separate ebirdst TOKEN secret or EBIRDST_KEY. yebsap-example reads Cornell's public Yellow-bellied Sapsucker sample without credentials, only for 2023/27km; the sample is restricted to Michigan and is not duck data. Model-release species codes are not silently mapped to the offline 2026 taxonomy. data_year is explicit and defaults to 2023; unavailable products fail clearly. Responses are bounded to 128 MiB and all NULL arguments are rejected. These are modeled seasonal distributions, not individual migration tracks or live forecasts. Access/data terms apply. No key, signed URL or downloaded file is retained in table state.";
 const RANGE_COLUMNS: Column[] = [
   ["species_code", "VARCHAR", "Species identifier recorded in the model product.", false],
   [

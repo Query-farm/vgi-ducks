@@ -65,17 +65,16 @@ export function column(name: string, type: VgiDataType, comment: string, nullabl
 }
 
 export const CATALOG_DOC_LLM =
-  "Duck species reference data and recent eBird sightings for birders and analysts. The species table " +
-  "is a bundled eBird 2026 taxonomy subset, available offline. recent_sightings(latitude, longitude) " +
-  "returns the most recent observation per duck species nearby; pass species_code to obtain the most " +
-  "recent observation at each location for that species. nearby_hotspots returns birding locations for " +
-  "all birds, not confirmed duck sites. These two API functions require an ebird DuckDB secret or EBIRD_API_KEY. " +
-  "Observation times are local wall-clock strings, not UTC; counts are reported individuals, not population estimates. " +
-  "seasonal_ranges supplies WGS84 WKB polygons for DuckDB Spatial. weekly_abundance summarizes modeled relative " +
-  "abundance within a WGS84 polygon; migration_calendar returns its positive peak weeks. These Status and Trends " +
-  "functions need a separate ebirdst secret or EBIRDST_KEY, except the public yebsap-example sample. " +
-  "The default model year is 2023; model-release species codes can differ from the current taxonomy. " +
-  "These patterns are not individual tracks or live migration forecasts. Always inspect coverage_fraction.";
+  "Duck data for birders and analysts from the Cornell Lab of Ornithology, in two families. Observation data " +
+  "comes from the eBird API 2.0: recent reported sightings of duck species near a point and the birding hotspots " +
+  "around it, which need an ebird DuckDB secret or EBIRD_API_KEY. Migration data comes from eBird Status and " +
+  "Trends: modeled seasonal range polygons and weekly relative abundance summarized over a WGS84 region, which " +
+  "need a separate ebirdst secret or EBIRDST_KEY, except Cornell's public yebsap-example sample. An offline " +
+  "species reference table (a bundled eBird 2026 taxonomy subset) supplies the species codes both families take. " +
+  "Observations are bounded recent snapshots with local wall-clock times and reported counts, not population " +
+  "estimates or a historical archive. Status and Trends values are modeled distributions for a model year " +
+  "(default 2023) whose species codes can differ from the current taxonomy; they are not individual tracks or " +
+  "live forecasts, so read coverage alongside abundance.";
 /** One plain paragraph shown as the worker's directory description (VGI107); the guide lives in doc_md/doc_llm. */
 export const CATALOG_COMMENT =
   "Duck species reference data, recent eBird sightings and nearby birding hotspots, plus eBird Status and " +
@@ -84,10 +83,16 @@ export const CATALOG_COMMENT =
 export const CATALOG_DOC_MD =
   "# VGI Ducks\n\n" +
   CATALOG_DOC_LLM +
-  "\n\nData are supplied by the Cornell Lab of Ornithology's [eBird](https://ebird.org). " +
-  "The worker preserves source identifiers and review flags. A missing count is SQL NULL. " +
-  "Species-level records only: hybrids, domestic forms and unidentified groups are excluded. " +
-  "Use SQL joins with weather and tide workers to explore conditions at sighting locations.\n\n" +
+  "\n\n## How the parts fit\n\n" +
+  "Look a duck up in the species table to get its eBird code, then pass that code to the observation or " +
+  "migration functions. Sightings and hotspots share eBird location identifiers, so a join shows which " +
+  "birding sites have reported ducks. Range polygons are WKB for DuckDB Spatial, and regional abundance takes " +
+  "a longitude/latitude polygon, so the two compose with any geometry you already have. Join with weather and " +
+  "tide workers to explore conditions at sighting locations.\n\n" +
+  "## Caveats\n\n" +
+  "Data are supplied by the Cornell Lab of Ornithology's [eBird](https://ebird.org) and its terms apply. " +
+  "The worker preserves source identifiers and review flags; a missing count is SQL NULL. Only species-level " +
+  "records are kept: hybrids, domestic forms and unidentified groups are excluded.\n\n" +
   "## Sources and references\n\n" +
   "- [eBird API 2.0 documentation](https://documenter.getpostman.com/view/664302/S1ENwy59): the " +
   "API behind the sightings and hotspots functions; [request an eBird API key](https://ebird.org/api/keygen).\n" +
@@ -98,12 +103,20 @@ export const CATALOG_DOC_MD =
 export const SCHEMA_COMMENT =
   "Duck species reference table, eBird sightings and hotspots, and Status and Trends ranges and abundance.";
 export const SCHEMA_DOC_LLM =
-  CATALOG_DOC_LLM +
-  " Query ducks.main.species to find codes and common/scientific names. The table includes extinct " +
-  "taxa flagged extinct; sighting requests reject extinct codes. Radius is 0–50 km and days_back is " +
-  "1–30 for sightings. A hotspot days_back value of 0 means no recency filter. Explicit NULL arguments " +
-  "are rejected. API results are bounded snapshots, not a complete historical observation archive.";
-export const SCHEMA_DOC_MD = `## main\n\n${CATALOG_DOC_LLM}\n\nUse the offline species table to find current eBird codes and scientific names. Join sightings and hotspots on location_id to identify birding sites with reported ducks. Observations retain local times and unknown counts; the 1–30 day lookback does not provide a historical archive.\n\nLoad DuckDB Spatial and convert seasonal geometry_wkb with ST_GeomFromWKB for spatial joins. Weekly region_wkt is a longitude/latitude Polygon or MultiPolygon; holes are honored. Modeled zeros remain zero; missing predictions yield NULL abundance. The public sample is Yellow-bellied Sapsucker data restricted to Michigan, not duck data.`;
+  "The one schema of the ducks worker. Start from the offline species table: it maps common and scientific " +
+  "names to the eBird species codes every other object takes, and flags extinct taxa, which observation " +
+  "requests reject. Observation functions read the live eBird API around a latitude/longitude within a small " +
+  "radius and a short lookback; migration functions read Cornell's modeled Status and Trends products for a " +
+  "species and model year. Explicit NULL arguments are rejected everywhere, and every result is bounded rather " +
+  "than an exhaustive archive.";
+export const SCHEMA_DOC_MD =
+  "## main\n\n" +
+  "Everything the worker exposes lives here. Use the offline species table to find current eBird codes and " +
+  "scientific names, then pass a code to the live observation functions (eBird API key) or the modeled " +
+  "migration functions (Status and Trends key, or the public sample).\n\nObservation results keep local times and " +
+  "unknown counts and cover only a recent lookback window; migration results are modeled seasonal patterns " +
+  "whose coverage should be checked before comparing weeks. Load DuckDB Spatial to work with the range " +
+  "geometry and region polygons.";
 export const AGENT_TEST_TASKS = [
   {
     name: "mallard_code",
