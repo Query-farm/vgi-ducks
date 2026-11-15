@@ -6,7 +6,7 @@
 
 import type { CatalogDescriptor, VgiFunction } from "@query-farm/vgi";
 import { nearbyHotspots, recentSightings } from "./ebird.ts";
-import { CATALOG_DOC_MD, CATALOG_NAME, CATALOG_TAGS, SCHEMA_DOC_MD, SCHEMA_TAGS, SOURCE_URL } from "./meta.ts";
+import { CATALOG_COMMENT, CATALOG_NAME, CATALOG_TAGS, SCHEMA_DOC_MD, SCHEMA_TAGS, SOURCE_URL } from "./meta.ts";
 import { migrationCalendar, seasonalRanges, weeklyAbundance } from "./migration.ts";
 import { speciesTable } from "./species.ts";
 import { STATUS_SECRET_TYPE } from "./status-api.ts";
@@ -49,7 +49,7 @@ const ALL_EXAMPLES = stampExampleQueries(FUNCTIONS);
 
 export const CATALOG: CatalogDescriptor = {
   name: CATALOG_NAME,
-  comment: CATALOG_DOC_MD,
+  comment: CATALOG_COMMENT,
   sourceUrl: SOURCE_URL,
   tags: CATALOG_TAGS,
   secretTypes: [API_SECRET_TYPE, STATUS_SECRET_TYPE],

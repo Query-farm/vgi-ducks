@@ -13,7 +13,7 @@
 import { field, type VgiDataType, type VgiField } from "@query-farm/vgi";
 
 export const CATALOG_NAME = "ducks";
-export const VERSION = "0.1.1";
+export const VERSION = "0.1.2";
 
 export const SOURCE_URL = "https://github.com/Query-farm/vgi-ducks";
 
@@ -76,6 +76,11 @@ export const CATALOG_DOC_LLM =
   "functions need a separate ebirdst secret or EBIRDST_KEY, except the public yebsap-example sample. " +
   "The default model year is 2023; model-release species codes can differ from the current taxonomy. " +
   "These patterns are not individual tracks or live migration forecasts. Always inspect coverage_fraction.";
+/** One plain paragraph shown as the worker's directory description (VGI107); the guide lives in doc_md/doc_llm. */
+export const CATALOG_COMMENT =
+  "Duck species reference data, recent eBird sightings and nearby birding hotspots, plus eBird Status and " +
+  "Trends seasonal ranges, weekly regional abundance and migration calendars, all from the Cornell Lab of " +
+  "Ornithology. Sightings and hotspots need an eBird API key.";
 export const CATALOG_DOC_MD =
   "# VGI Ducks\n\n" +
   CATALOG_DOC_LLM +
