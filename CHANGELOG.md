@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4 (2026-11-16)
+
+- Bump @query-farm/vgi to 0.50.1.
+
 ## 0.1.3
 
 - Docs give an overview, not a function list (vgi-lint VGI173): the catalog and schema docs now describe
