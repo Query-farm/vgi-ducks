@@ -1,5 +1,5 @@
 {
-  "version": "0.1.5",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Duck sightings, birding hotspots, spatial seasonal ranges and weekly regional abundance in SQL.",
@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@query-farm/apache-arrow": "^21.1.1",
-    "@query-farm/vgi": "~0.50.1",
-    "@query-farm/vgi-rpc": "^0.29.7",
+    "@query-farm/vgi": "~0.52.2",
+    "@query-farm/vgi-rpc": "^0.30.2",
     "@turf/boolean-point-in-polygon": "^7.4.0",
     "@turf/boolean-valid": "^7.4.0",
     "@turf/kinks": "^7.4.0",

@@ -15,7 +15,7 @@ references, not worker dependencies.
 - SDK: `@query-farm/vgi` 0.50.0; transport `@query-farm/vgi-rpc` 0.29.7;
   Arrow `@query-farm/apache-arrow` 21.1.1. Starter SDK pins preserved; new
   migration dependencies are recorded in `bun.lock`.
-- SQL suite: Haybarn 2.0.0rc11 (`haybarn-unittest`).
+- SQL suite: Haybarn 2.0.1rc3 (`haybarn-unittest`).
 - Additional engine: stock DuckDB 2.0.0, signed VGI extension `e75482339d`
   from the Query Farm extension repository. Signature verification remained enabled.
 

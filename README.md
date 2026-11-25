@@ -326,7 +326,7 @@ make test-live         # Real eBird API smoke queries; requires EBIRD_API_KEY
 make test-migration-sample # Real public GeoPackage/GeoTIFF products + DuckDB Spatial, no key
 ```
 
-`make check` uses Haybarn 2.0.0rc11; it is not the stock DuckDB check.
+`make check` uses Haybarn 2.0.1rc3; it is not the stock DuckDB check.
 Metadata execution covers the offline species example. Live API examples are
 non-executable documentation, so no key is required for deterministic checks.
 `make test-live` fails clearly without a configured key and allows legitimately
